@@ -67,3 +67,18 @@ public:
 	TSubclassOf<class UGameplayEffectMagnitudeCalculation> ParentClass = nullptr;
 };
 
+/** Factory for creating new Gameplay Effect Execution Calculation Blueprints */
+UCLASS()
+class UGameplayEffectExecutionCalculationFactory : public UFactory
+{
+	GENERATED_BODY()
+
+public:
+	UGameplayEffectExecutionCalculationFactory();
+
+	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
+	virtual bool CanCreateNew() const override { return true; }
+
+	TSubclassOf<class UGameplayEffectExecutionCalculation> ParentClass = nullptr;
+};
+

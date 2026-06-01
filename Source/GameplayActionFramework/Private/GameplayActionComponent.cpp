@@ -11,6 +11,7 @@
 #include "GameplayAction.h" 
 #include "GameplayEffect.h"
 #include "GameplayEffectMagnitudeCalculation.h"
+#include "GameplayEffectExecutionCalculation.h"
 #include "GameFramework/MovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameplayEffect.h"
@@ -502,6 +503,12 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
         {
             AttributeSet->SetBaseValue(ModInfo.Attribute, NewValue);
         }
+    }
+
+    if (Spec.Effect->ExecutionCalculation)
+    {
+        UGameplayEffectExecutionCalculation* ExecCDO = Spec.Effect->ExecutionCalculation->GetDefaultObject<UGameplayEffectExecutionCalculation>();
+        ExecCDO->Execute(Spec, this);
     }
 
     AddOwnedGameplayTags(Spec.Effect->GrantedTags);

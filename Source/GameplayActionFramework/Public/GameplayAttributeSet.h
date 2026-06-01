@@ -12,7 +12,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogGameplayAttributeSet, Log, All);
 
 class UGameplayAttributeSet;
 
-/** 
+/**
  * Structure that holds the actual values of an attribute.
  * Contains both Base and Current values.
  */
@@ -46,8 +46,8 @@ protected:
 	float CurrentValue;
 };
 
-/** 
- * Describes a FGameplayAttributeData property inside an attribute set. 
+/**
+ * Describes a FGameplayAttributeData property inside an attribute set.
  * Used for identifying and accessing attributes in a generic way.
  */
 USTRUCT(BlueprintType)
@@ -61,7 +61,7 @@ public:
 
 	bool IsValid() const { return Attribute.Get() != nullptr; }
 	FProperty* GetUProperty() const { return Attribute.Get(); }
-	
+
 	GAMEPLAYACTIONFRAMEWORK_API FString GetAttributeName() const;
 
 	/** Returns the class of the attribute set that owns this attribute */
@@ -93,16 +93,18 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayAttributeSet : public UObject
 public:
 	UGameplayAttributeSet();
 
-	/** Called just before an attribute's current value is changed. NewValue can be modified for clamping. */
+	/** Called just before an attribute's current value is changed. Return clamped value. */
 	UFUNCTION(BlueprintNativeEvent, Category = "Attributes")
-	void PreAttributeChange(const FGameplayAttribute& Attribute, UPARAM(ref) float& NewValue);
-	virtual void PreAttributeChange_Implementation(const FGameplayAttribute& Attribute, UPARAM(ref) float& NewValue) 
-	{}
+	float PreAttributeChange(const FGameplayAttribute& Attribute, float NewValue);
+	virtual float PreAttributeChange_Implementation(const FGameplayAttribute& Attribute, float NewValue)
+	{
+		return NewValue;
+	}
 
 	/** Called just after an attribute's current value is changed. */
 	UFUNCTION(BlueprintNativeEvent, Category = "Attributes")
 	void PostAttributeChange(const FGameplayAttribute& Attribute, float NewValue, float OldValue);
-	virtual void PostAttributeChange_Implementation(const FGameplayAttribute& Attribute, float NewValue, float OldValue) 
+	virtual void PostAttributeChange_Implementation(const FGameplayAttribute& Attribute, float NewValue, float OldValue)
 	{}
 
 	/** Returns current numeric value of an attribute */

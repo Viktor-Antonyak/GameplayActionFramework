@@ -45,7 +45,7 @@ void UGameplayAttributeSet::SetNumericValue(const FGameplayAttribute& Attribute,
 	{
 		const float OldValue = Data->GetCurrentValue();
 		
-		PreAttributeChange(Attribute, NewValue);
+		NewValue = PreAttributeChange(Attribute, NewValue);
 		
 		Data->SetCurrentValue(NewValue);
 		

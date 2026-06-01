@@ -13,6 +13,7 @@
 #include "GameplayEffect.generated.h"
 
 class UGameplayEffectMagnitudeCalculation;
+class UGameplayEffectExecutionCalculation;
 
 /**
  * Gameplay Effect duration types.
@@ -147,6 +148,9 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Duration", meta=(EditCondition="DurationPolicy == EGameplayEffectDuration::HasDuration"))
     float DurationMagnitude = 0.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")
+    TSubclassOf<UGameplayEffectExecutionCalculation> ExecutionCalculation;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Modifiers")
     TArray<FGameplayModifierInfo> Modifiers;

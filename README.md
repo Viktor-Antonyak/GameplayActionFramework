@@ -9,6 +9,7 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 - **Stacking** — Aggregate by source or target with configurable stack limits
 - **Attribute Sets** — Custom attribute containers with `PreAttributeChange` / `PostAttributeChange` callbacks
 - **Magnitude Calculation** — Blueprint-native custom magnitude logic per modifier
+- **Execution Calculation** — Full control over effect application, replaces standard modifier loop
 - **Tags** — Full `FGameplayTag` support with application requirements, blocked tags, and granted tags
 - **Blueprint Library** — Helper functions for applying effects, managing tags, and reading attributes from any actor
 
@@ -62,7 +63,9 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 - `Multiplicative` — `CurrentValue *= Magnitude`
 - `Override` — `CurrentValue = Magnitude`
 
-**Magnitude priority** (per `FGameplayModifierInfo`):
+**Execution Calculation** — runs after all modifiers. Useful for reading final attribute values and applying follow-up logic (e.g., read health after damage → apply bleed).
+
+**Magnitude priority** (per `FGameplayModifierInfo`, only when no Execution is set):
 1. `MagnitudeCalculation` — if set, `CalculateMagnitude(EffectSpec, ActionComponent)` is called
 2. `DataTag` — if a `SetByCaller` magnitude with matching tag exists in the spec
 3. `Magnitude` — raw float value
@@ -96,12 +99,43 @@ FGameplayAttributeData Mana;
 BaseValue is the persistent value; CurrentValue is the runtime value (modified by effects). `SetBaseValue` automatically syncs CurrentValue. Effects modify CurrentValue; on expiry, the modifier is reverted from CurrentValue and BaseValue is unaffected.
 
 Callbacks:
-- `PreAttributeChange(Attribute, NewValue)` — called before a set; modify `NewValue` for clamping
+- `PreAttributeChange(Attribute, NewValue)` → returns `float` — called before a set; return the clamped value
 - `PostAttributeChange(Attribute, NewValue, OldValue)` — called after a set
 
 ### Magnitude Calculation
 
 Create a child Blueprint of `UGameplayEffectMagnitudeCalculation` and override `CalculateMagnitude`. Assign it to a `MagnitudeCalculation` field in `FGameplayModifierInfo`. The calculation is evaluated at effect application time with access to the full `FGameplayEffectSpec` and the target's `UGameplayActionComponent`.
+
+### Execution Calculation
+
+Create a child Blueprint of `UGameplayEffectExecutionCalculation` and override `Execute`. Assign it to the `ExecutionCalculation` field on the effect itself. It runs **after** all modifiers, so you can read final attribute values to apply follow-up logic.
+
+Use Execution Calculation when:
+- Damage reduces to armour/damage mitigation formulas
+- Life steal or damage → healing chains
+- Conditional logic: "if poisoned → double damage"
+- Any scenario where one modifier's result affects another
+
+```cpp
+// Example: damage with armour mitigation + bleed
+void UMyExecution::Execute_Implementation(
+    const FGameplayEffectSpec& Spec,
+    UGameplayActionComponent* Target)
+{
+    float RawDamage = Spec.GetSetByCallerMagnitude(DamageTag);
+    float Armor = Target->GetAttributeValue(ArmorAttr);
+    float FinalDamage = RawDamage * (100.0f / (100.0f + Armor));
+
+    Target->SetAttributeValue(HealthAttr,
+        Target->GetAttributeValue(HealthAttr) - FinalDamage);
+
+    float Bleed = FinalDamage * FMath::FRandRange(0.05f, 0.10f);
+    FGameplayEffectSpec BleedSpec;
+    BleedSpec.Effect = BleedEffectCDO;
+    BleedSpec.SetSetByCallerMagnitude(BleedTag, Bleed);
+    Target->ApplyGameplayEffectSpecToSelf(BleedSpec);
+}
+```
 
 ### Blueprint Library
 
@@ -142,9 +176,11 @@ Tags involved:
 | `UGameplayEffect` | Data asset defining modifiers, duration, period, stacking, and tags |
 | `UGameplayAttributeSet` | Container for `FGameplayAttributeData` properties |
 | `UGameplayEffectMagnitudeCalculation` | Custom magnitude calculation per modifier |
+| `UGameplayEffectExecutionCalculation` | Full control over effect application (replaces modifiers) |
 
 ## Notes
 
 - All effect modifiers on periodic effects (`Period > 0`) operate on CurrentValue only — no BaseValue tracking, no revert on expiry.
 - To inspect running effects, use `HasActiveEffect(Class)` or `HasActiveEffectSpecHandle(Handle)`.
 - Cost and cooldown effects are optional — if not set, no cost/cooldown is enforced.
+- If you see the warning "*plugin was designed for build 5.3.0*", either ignore it (safe) or remove `EngineVersion` from `.uplugin` to clear it.
