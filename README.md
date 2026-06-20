@@ -11,17 +11,20 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 - **Magnitude Calculation** — Blueprint-native custom magnitude logic per modifier
 - **Execution Calculation** — Full control over effect application, replaces standard modifier loop
 - **Tags** — Full `FGameplayTag` support with application requirements, blocked tags, and granted tags
+- **Init Actions** — Actions auto-initialized on BeginPlay from the component's array, no Blueprint graph needed
 - **Blueprint Library** — Helper functions for applying effects, managing tags, and reading attributes from any actor
+- **Debug Visualization** — `DebugGAF` console command to inspect actions, effects, tags, and attributes on the actor under your crosshair
 
 ## Quick Start
 
 1. Enable the plugin in your project.
 2. Create a **Gameplay Attribute Set** blueprint with your attributes.
 3. Add a **Gameplay Action Component** to your character.
-4. Add **Default Attributes** in the component settings.
-5. Create a **Gameplay Action** blueprint and implement `OnExecute` / `OnEnd`.
-6. Create a **Gameplay Effect** blueprint to define modifiers.
-7. Call `Add Gameplay Action` and `Try Activate Action by Tag` / `Press Input ID` from your character blueprint.
+4. Implement **Gameplay Action Interface**
+5. Add **Default Attributes** in the component settings.
+6. Create a **Gameplay Action** blueprint and implement `OnExecute` / `OnEnd`.
+7. Create a **Gameplay Effect** blueprint to define modifiers.
+8. Call `Add Gameplay Action` and `Try Activate Action by Tag` / `Press Input ID` from your character blueprint.
 
 ## Requirements
 
@@ -46,6 +49,10 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 3. **Triggered actions** — `TriggerActionByClass` creates a new instance, calls `RequestTriggerAction` with a payload (`FInstancedStruct`), executes once, and is destroyed on end.
 
 4. **Ending** — `RequestEndAction` calls `EndAction`: removes from active list, removes grant tags, applies cooldown effect if set, calls `OnEndAction(bool bWasCanceled)`.
+
+### Init Actions
+
+`FActionInitializationData` pairs a `TSubclassOf<UGameplayAction>` with a `Level`. Fill `InitialActions` in the component's details panel to auto-initialize actions on `BeginPlay`.
 
 ### Gameplay Effects
 
@@ -177,6 +184,8 @@ Tags involved:
 | `UGameplayAttributeSet` | Container for `FGameplayAttributeData` properties |
 | `UGameplayEffectMagnitudeCalculation` | Custom magnitude calculation per modifier |
 | `UGameplayEffectExecutionCalculation` | Full control over effect application (replaces modifiers) |
+| `IGameplayActionInterface` | Interface for actors; exposes `GetGameplayActionComponent()` |
+| `UGameplayActionFrameworkDebugSubsystem` | World subsystem; renders debug info toggled by `DebugGAF` |
 
 ## Notes
 
@@ -184,3 +193,17 @@ Tags involved:
 - To inspect running effects, use `HasActiveEffect(Class)` or `HasActiveEffectSpecHandle(Handle)`.
 - Cost and cooldown effects are optional — if not set, no cost/cooldown is enforced.
 - If you see the warning "*plugin was designed for build 5.3.0*", either ignore it (safe) or remove `EngineVersion` from `.uplugin` to clear it.
+- `InitializeAction` / `DeinitializeAction` are `virtual` — override them in subclasses to hook into the lifecycle.
+
+## Debug Visualization
+
+Type `DebugGAF` in the console to toggle on‑screen debug info. The system performs a line trace from the camera and displays data for the actor under the crosshair. If nothing is hit, it falls back to your own pawn.
+
+Shows:
+- **Grant Actions** — list of registered actions; green = currently active, white = inactive
+- **Triggered Actions** — running one‑shot actions (always green)
+- **Active Effects** — effect name, stack count, remaining time (or "Infinite")
+- **Owned Tags** — all gameplay tags on the actor
+- **Attributes** — per attribute set: each attribute with `Base=` and `Current=`
+
+Implementation: `UGameplayActionFrameworkDebugSubsystem` registers a `FDebugDrawDelegate` via `UDebugDrawService::Register(TEXT("GAF"))`, toggled by a `TCustomShowFlag<GAF>` (also controllable via `ShowFlag.GAF`). `UGameplayActionComponent::DisplayDebug` renders the actual data.

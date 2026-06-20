@@ -12,6 +12,8 @@
 #include "GameplayEffect.h"
 #include "GameplayEffectMagnitudeCalculation.h"
 #include "GameplayEffectExecutionCalculation.h"
+#include "Engine/Canvas.h"
+#include "Engine/Engine.h"
 #include "GameFramework/MovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameplayEffect.h"
@@ -33,6 +35,7 @@ void UGameplayActionComponent::BeginPlay()
 	
 	InitActorInfo();
 	InitAttributes();
+	InitActions();
 }
 
 void UGameplayActionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -405,6 +408,19 @@ void UGameplayActionComponent::InitAttributes()
 	}
 }
 
+void UGameplayActionComponent::InitActions()
+{
+    for (const FActionInitializationData& InitData : InitialActions)
+    {
+        if (!IsValid(InitData.Action))
+        {
+            continue;
+        }
+
+        AddGameplayAction(InitData.Action, InitData.Level);
+    }
+}
+
 // --- Gameplay Effect Management ---
 
 FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToSelf(const FGameplayEffectSpec& Spec)
@@ -721,4 +737,117 @@ FActiveGameplayEffectHandle UGameplayActionComponent::FindStackableEffect(const 
     }
 
     return FActiveGameplayEffectHandle();
+}
+
+void UGameplayActionComponent::DisplayDebug(class UCanvas* Canvas, float& YL, float& YPos) const
+{
+    if (!Canvas)
+    {
+        return;
+    }
+
+    UFont* Font = GEngine->GetSmallFont();
+    YL = Font->GetMaxCharHeight() + 2.f;
+    const float XPos = 4.f;
+
+    Canvas->SetDrawColor(FColor::White);
+    Canvas->DrawText(Font, TEXT("--- Grant Actions ---"), XPos, YPos);
+    YPos += YL;
+
+    for (const FGameplayActionSpec& Spec : AddedActions)
+    {
+        if (!Spec.IsValid())
+        {
+            continue;
+        }
+
+        const FColor Color = Spec.Action->IsActive() ? FColor::Green : FColor::White;
+        Canvas->SetDrawColor(Color);
+        Canvas->DrawText(Font, FString::Printf(TEXT("  %s"), *Spec.Action->GetClass()->GetName()), XPos + 8.f, YPos);
+        YPos += YL;
+    }
+
+    Canvas->SetDrawColor(FColor::White);
+    Canvas->DrawText(Font, TEXT("--- Triggered Actions ---"), XPos, YPos);
+    YPos += YL;
+
+    for (const UGameplayAction* Action : ActiveTriggeredActions)
+    {
+        if (!IsValid(Action))
+        {
+            continue;
+        }
+
+        Canvas->SetDrawColor(FColor::Green);
+        Canvas->DrawText(Font, FString::Printf(TEXT("  %s"), *Action->GetClass()->GetName()), XPos + 8.f, YPos);
+        YPos += YL;
+    }
+
+    Canvas->SetDrawColor(FColor::White);
+    Canvas->DrawText(Font, TEXT("--- Active Effects ---"), XPos, YPos);
+    YPos += YL;
+
+    for (const FActiveGameplayEffect& Effect : ActiveEffects)
+    {
+        if (!Effect.Spec.Effect)
+        {
+            continue;
+        }
+
+        FString Info = FString::Printf(TEXT("  %s [Stacks: %d]"), *Effect.Spec.Effect->GetName(), Effect.StackCount);
+
+        if (Effect.Duration > 0.f)
+        {
+            const float TimeLeft = Effect.Duration - (GetWorld()->GetTimeSeconds() - Effect.StartTime);
+            Info += FString::Printf(TEXT(" (%.1fs)"), FMath::Max(0.f, TimeLeft));
+        }
+        else
+        {
+            Info += TEXT(" (Infinite)");
+        }
+
+        Canvas->DrawText(Font, Info, XPos + 8.f, YPos);
+        YPos += YL;
+    }
+
+    Canvas->SetDrawColor(FColor::White);
+    Canvas->DrawText(Font, TEXT("--- Owned Tags ---"), XPos, YPos);
+    YPos += YL;
+
+    if (GameplayTagContainer.IsValid())
+    {
+        Canvas->DrawText(Font, FString::Printf(TEXT("  %s"), *GameplayTagContainer->ToStringSimple()), XPos + 8.f, YPos);
+        YPos += YL;
+    }
+
+    Canvas->SetDrawColor(FColor::White);
+    Canvas->DrawText(Font, TEXT("--- Attributes ---"), XPos, YPos);
+    YPos += YL;
+
+    for (const UGameplayAttributeSet* Set : AttributeSets)
+    {
+        if (!IsValid(Set))
+        {
+            continue;
+        }
+
+        Canvas->DrawText(Font, FString::Printf(TEXT("  [%s]"), *Set->GetClass()->GetName()), XPos + 8.f, YPos);
+        YPos += YL;
+
+        for (TFieldIterator<FProperty> It(Set->GetClass()); It; ++It)
+        {
+            const FStructProperty* StructProp = CastField<FStructProperty>(*It);
+            if (!StructProp || StructProp->Struct != FGameplayAttributeData::StaticStruct())
+            {
+                continue;
+            }
+
+            const FGameplayAttributeData* Data = StructProp->ContainerPtrToValuePtr<FGameplayAttributeData>(const_cast<UGameplayAttributeSet*>(Set));
+            if (Data)
+            {
+                Canvas->DrawText(Font, FString::Printf(TEXT("    %s: Base=%.1f Current=%.1f"), *It->GetName(), Data->GetBaseValue(), Data->GetCurrentValue()), XPos + 16.f, YPos);
+                YPos += YL;
+            }
+        }
+    }
 }

@@ -10,21 +10,30 @@ DEFINE_LOG_CATEGORY(LogGameplayAction);
 
 UGameplayAction::UGameplayAction()
 {
-	ActionType = EGameplayActionType::Default;
-	bIsActive = false;
-	CachedActionLevel = -1;
 }
 
 void UGameplayAction::InitializeAction(const TSharedPtr<FGameplayActionActorInfo>& ActorInfo, int32 ActionLevel)
 {
 	CachedActorInfo = ActorInfo;
 	CachedActionLevel = ActionLevel;
+
+	if (CachedActorInfo.IsValid())
+	{
+		for (const TWeakObjectPtr<USkeletalMeshComponent>& SkeletalMeshComponent : CachedActorInfo->SkeletalMeshComponents)
+		{
+			if (SkeletalMeshComponent.IsValid())
+			{
+				MeshComponents.Add(SkeletalMeshComponent.Get());
+			}
+		}
+	}
 }
 
 void UGameplayAction::DeinitializeAction()
 {
 	CachedActorInfo.Reset();
 	CachedActionLevel = -1;
+	MeshComponents.Empty();
 }
 
 bool UGameplayAction::RequestExecuteAction()
@@ -168,7 +177,7 @@ void UGameplayAction::OnGameplayTaskDeactivated(UGameplayTask& Task)
 
 void UGameplayAction::EndAction()
 {
-	if (!GetActionComponent() && !bIsActive)
+	if (!GetActionComponent() || !bIsActive)
 	{
 		return;
 	}
@@ -192,7 +201,7 @@ void UGameplayAction::EndAction()
 
 void UGameplayAction::CancelAction()
 {
-	if (!GetActionComponent() && !bIsActive)
+	if (!GetActionComponent() || !bIsActive)
 	{
 		return;
 	}
@@ -238,19 +247,7 @@ bool UGameplayAction::CommitCooldown()
 
 TArray<USkeletalMeshComponent*> UGameplayAction::GetSkeletalMeshComponents() const
 {
-	TArray<USkeletalMeshComponent*> RawSkeletalMeshComponents;
-
-	if (CachedActorInfo.IsValid())
-	{
-		for (const TWeakObjectPtr<USkeletalMeshComponent>& SkeletalMeshComponent : CachedActorInfo->SkeletalMeshComponents)
-		{
-			if (SkeletalMeshComponent.IsValid())
-			{
-				RawSkeletalMeshComponents.Add(SkeletalMeshComponent.Get());
-			}
-		}
-	}
-	return RawSkeletalMeshComponents;
+	return MeshComponents;
 }
 
 bool UGameplayAction::CanCancelAllActions()

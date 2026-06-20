@@ -85,10 +85,10 @@ public:
 	UGameplayAction();
 
 	/** Initializes the action with actor info and level. */
-	void InitializeAction(const TSharedPtr<FGameplayActionActorInfo>& ActorInfo, int32 ActionLevel);
+	virtual void InitializeAction(const TSharedPtr<FGameplayActionActorInfo>& ActorInfo, int32 ActionLevel);
 
 	/** Deinitializes the action. */
-	void DeinitializeAction();
+	virtual void DeinitializeAction();
 
 	UFUNCTION(BlueprintCallable, Category="Gameplay Action")
 	bool IsActive() const 
@@ -208,7 +208,7 @@ protected:
 
 	/** Type of this action. Standard actions are added via AddGameplayAction. Triggered are executed on the fly. */
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Action Type")
-	EGameplayActionType ActionType;
+	EGameplayActionType ActionType = EGameplayActionType::Default;
 
 	/** Input ID associated with the action (Standard actions only). */
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Input", meta=(EditCondition="ActionType == EGameplayActionType::Default"))
@@ -224,11 +224,11 @@ protected:
 
 private:
 
-	bool bIsActive;
+	bool bIsActive = false;
 
 	TSharedPtr<FGameplayActionActorInfo> CachedActorInfo;
 
-	int32 CachedActionLevel;
+	int32 CachedActionLevel = -1;
 
 	bool bCanBeCanceled = true;
 
@@ -241,6 +241,9 @@ private:
 	bool CheckBlockedActionTags();
 
 	bool CanApplyCost();
+
+	UPROPERTY()
+	TArray<USkeletalMeshComponent*> MeshComponents;
 
 	friend class UGameplayActionComponent;
 	friend class UGameplayActionFactory;

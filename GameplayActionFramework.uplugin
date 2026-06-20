@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.0",
+	"VersionName": "1.1",
 	"FriendlyName": "GameplayActionFramework",
 	"Description": "Lightweight, modular architecture for defining, triggering, and managing complex character abilities and interactions. Similar to Gameplay Ability System framework",
 	"Category": "Gameplay",

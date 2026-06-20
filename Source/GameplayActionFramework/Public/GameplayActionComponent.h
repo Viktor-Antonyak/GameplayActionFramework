@@ -10,10 +10,17 @@
 #include "GameplayActionActorInfo.h"
 #include "GameplayActionSpec.h"
 #include "GameplayAttributeSet.h"
+#include "Serialization/StructuredArchive.h"
 #include "Templates/SharedPointer.h"
 #include "Templates/SubclassOf.h"
 #include "GameplayTasksComponent.h"
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8
+// For UE 5.8
+#include "StructUtils/InstancedStruct.h"
+#else
+// For UE 5.7, 5.6 and older
 #include "InstancedStruct.h"
+#endif
 
 #include "GameplayActionComponent.generated.h"
 
@@ -40,6 +47,18 @@ struct FAttributeInitializationData
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Gameplay Attribute")
 	float InitialValue = 0.0f;
+};
+
+USTRUCT(BlueprintType)
+struct FActionInitializationData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Gameplay Action")
+	TSubclassOf<UGameplayAction> Action;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Gameplay Action")
+	int32 Level = -1;
 };
 
 /** Component that manages Gameplay Actions and Attributes. */
@@ -158,6 +177,9 @@ public:
 	/** Returns whether the actor has an active gameplay effect class. */
 	UFUNCTION(BlueprintPure, Category = "Gameplay Effect")
 	bool HasActiveEffect(TSubclassOf<UGameplayEffect> EffectClass);
+
+	/** Draws debug info on canvas. */
+	void DisplayDebug(class UCanvas* Canvas, float& YL, float& YPos) const;
 	
 	// --- Delegates ---
 	UPROPERTY(BlueprintAssignable, Category="Gameplay Action")
@@ -178,6 +200,7 @@ protected:
 
 	void InitActorInfo();
 	void InitAttributes();
+	void InitActions();
 
 	TSharedPtr<FGameplayTagContainer> GameplayTagContainer;
 	
@@ -197,6 +220,10 @@ protected:
 	/** Specific initial values for attributes (applied after set creation) */
 	UPROPERTY(EditAnywhere, Category="Gameplay Attributes")
 	TArray<FAttributeInitializationData> InitialAttributeValues;
+
+	/** Actions to be initialized on BeginPlay */
+	UPROPERTY(EditAnywhere, Category="Gameplay Actions")
+	TArray<FActionInitializationData> InitialActions;	
 	
 	/** All active attribute sets managed by this component */
 	UPROPERTY(BlueprintReadOnly, Category="Gameplay Attributes")
