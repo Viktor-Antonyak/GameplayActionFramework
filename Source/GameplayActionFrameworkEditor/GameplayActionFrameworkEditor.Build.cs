@@ -10,11 +10,7 @@ public class GameplayActionFrameworkEditor : ModuleRules
             new string[]
             {
                 "Core",
-                "GameplayActionFramework",
-                "EngineAssetDefinitions", 
-                "AssetDefinition",       
-                "AssetTools",            
-                "UnrealEd"
+                "GameplayActionFramework"
             }
         );
 
@@ -34,7 +30,11 @@ public class GameplayActionFrameworkEditor : ModuleRules
                 "KismetWidgets",
                 "KismetCompiler",
                 "ToolMenus",
-                "ContentBrowser"
+                "ContentBrowser",
+                "EngineAssetDefinitions", 
+                "AssetDefinition",       
+                "AssetTools",            
+                "UnrealEd"
             }
         );
     }
