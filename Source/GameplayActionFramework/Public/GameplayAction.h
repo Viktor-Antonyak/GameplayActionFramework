@@ -11,7 +11,6 @@
 #include "Templates/SubclassOf.h"
 #include "GameplayTaskOwnerInterface.h"
 #include "StructUtils/InstancedStruct.h"
-#include "UObject/ObjectMacros.h"
 
 #include "GameplayAction.generated.h"
 

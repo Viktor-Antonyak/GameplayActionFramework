@@ -76,6 +76,9 @@ struct FGameplayEffectSpec
 
     UPROPERTY(BlueprintReadWrite)
     TMap<FGameplayTag, float> SetByCallerMagnitudes;
+    
+    UPROPERTY(BlueprintReadWrite)
+    int32 Level = 1;
 
     void SetSetByCallerMagnitude(FGameplayTag Tag, float Magnitude);
 

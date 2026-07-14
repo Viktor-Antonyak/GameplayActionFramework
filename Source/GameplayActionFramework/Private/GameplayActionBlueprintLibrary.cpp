@@ -32,28 +32,28 @@ FGameplayTagContainer UGameplayActionBlueprintLibrary::GetOwnedGameplayTagsFromA
 	return FGameplayTagContainer();
 }
 
-bool UGameplayActionBlueprintLibrary::AddOwnedGameplayTagsToActor(AActor* Actor, FGameplayTagContainer Tags)
+bool UGameplayActionBlueprintLibrary::AddOwnedGameplayTagsToActor(AActor* Actor, FGameplayTagContainer Tags, int32 Quantity)
 {
 	if (IsValid(Actor))
 	{
 		UGameplayActionComponent* Component = GetGameplayActionComponent(Actor);
 		if (IsValid(Component))
 		{
-			Component->AddOwnedGameplayTags(Tags);
+			Component->AddOwnedGameplayTags(Tags, Quantity);
 			return true;
 		}
 	}
 	return false;
 }
 
-bool UGameplayActionBlueprintLibrary::RemoveOwnedGameplayTagsFromActor(AActor* Actor, FGameplayTagContainer Tags)
+bool UGameplayActionBlueprintLibrary::RemoveOwnedGameplayTagsFromActor(AActor* Actor, FGameplayTagContainer Tags, int32 Quantity)
 {
 	if (IsValid(Actor))
 	{
 		UGameplayActionComponent* Component = GetGameplayActionComponent(Actor);
 		if (IsValid(Component))
 		{
-			Component->RemoveOwnedGameplayTags(Tags);
+			Component->RemoveOwnedGameplayTags(Tags, Quantity);
 			return true;
 		}
 	}
@@ -83,7 +83,7 @@ bool UGameplayActionBlueprintLibrary::NotEqualAttributeStruct(const FGameplayAtt
     return Attribute1 != Attribute2;
 }
 
-FGameplayEffectSpec UGameplayActionBlueprintLibrary::MakeGameplayEffectSpec(TSubclassOf<UGameplayEffect> Effect)
+FGameplayEffectSpec UGameplayActionBlueprintLibrary::MakeGameplayEffectSpec(TSubclassOf<UGameplayEffect> Effect, int32 Level)
 {
     if (!IsValid(Effect))
     {
@@ -99,21 +99,20 @@ FGameplayEffectSpec UGameplayActionBlueprintLibrary::MakeGameplayEffectSpec(TSub
 
     FGameplayEffectSpec Spec;
     Spec.Effect = EffectCDO;
+	Spec.Level = Level;
 
     return Spec;
 }
 
 FGameplayEffectSpec UGameplayActionBlueprintLibrary::AddSetByCallerMagnitude(FGameplayEffectSpec Spec, FGameplayTag DataTag, float Magnitude)
 {
-    if (!IsValid(Spec.Effect) || !DataTag.IsValid())
-    {
-        return Spec;
-    }
+	if (!IsValid(Spec.Effect) || !DataTag.IsValid())
+	{
+		return Spec;
+	}
 
-    FGameplayEffectSpec NewSpec = Spec;
-    NewSpec.SetSetByCallerMagnitude(DataTag, Magnitude);
-
-    return NewSpec;
+	Spec.SetSetByCallerMagnitude(DataTag, Magnitude);
+	return Spec;
 }
 
 FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffectSpecToActor(AActor* Actor, const FGameplayEffectSpec& Spec)
@@ -133,7 +132,7 @@ FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffect
     return ActionComponent->ApplyGameplayEffectSpecToSelf(Spec);
 }
 
-FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffectToActor(AActor* Actor, TSubclassOf<UGameplayEffect> Effect)
+FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffectToActor(AActor* Actor, TSubclassOf<UGameplayEffect> Effect, int32 Level)
 {
    if (!IsValid(Actor) || !IsValid(Effect))
    {
@@ -147,5 +146,5 @@ FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffect
        return FActiveGameplayEffectHandle();
    }
 
-   return ActionComponent->ApplyGameplayEffectToSelf(Effect);
+   return ActionComponent->ApplyGameplayEffectToSelf(Effect, Level);
 }

@@ -10,7 +10,7 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 - **Attribute Sets** — Custom attribute containers with `PreAttributeChange` / `PostAttributeChange` callbacks
 - **Magnitude Calculation** — Blueprint-native custom magnitude logic per modifier
 - **Execution Calculation** — Full control over effect application, replaces standard modifier loop
-- **Tags** — Full `FGameplayTag` support with application requirements, blocked tags, and granted tags
+- **Tags** — Stackable `FGameplayTag` system with reference counting (quantity), application requirements, blocked tags, and granted tags
 - **Init Actions** — Actions auto-initialized on BeginPlay from the component's array, no Blueprint graph needed
 - **Blueprint Library** — Helper functions for applying effects, managing tags, and reading attributes from any actor
 - **Debug Visualization** — `DebugGAF` console command to inspect actions, effects, tags, and attributes on the actor under your crosshair
@@ -56,7 +56,7 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 
 ### Gameplay Effects
 
-`UGameplayEffect` is a `UDataAsset` defining attribute modifications. Effects are applied via `ApplyGameplayEffectSpecToSelf` / `ApplyGameplayEffectToSelf`.
+`UGameplayEffect` is a `UDataAsset` defining attribute modifications. Effects are applied via `ApplyGameplayEffectSpecToSelf` / `ApplyGameplayEffectToSelf`. Each `FGameplayEffectSpec` carries a `Level` (default 1) for level-scaled effects.
 
 **Duration** — controlled by `DurationPolicy`:
 - `Instant` — modifiers applied immediately, no timer, no revert
@@ -81,7 +81,7 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 - `AggregateBySource` — stack per source
 - `AggregateByTarget` — stack per target
 
-**Tags** — effects can grant tags on application, require tags on the target (`ApplicationRequiredTags`), or be blocked by tags on the target (`ApplicationBlockedTags`).
+**Tags** — effects can grant tags on application, require tags on the target (`ApplicationRequiredTags`), or be blocked by tags on the target (`ApplicationBlockedTags`). Tags now use a stackable container with reference counting — `AddOwnedGameplayTags` / `RemoveOwnedGameplayTags` accept a `Quantity` parameter, and `GetOwnedGameplayTagCount(Tag)` returns the current stack count.
 
 ### Cost and Cooldown
 
@@ -152,13 +152,13 @@ void UMyExecution::Execute_Implementation(
 |----------|---------|
 | `GetGameplayActionComponent` | Gets the component from an actor |
 | `GetOwnedGameplayTagsFromActor` | Returns tags on an actor |
-| `AddOwnedGameplayTagsToActor` | Adds tags to an actor |
-| `RemoveOwnedGameplayTagsFromActor` | Removes tags from an actor |
+| `AddOwnedGameplayTagsToActor(Tags, Quantity=1)` | Adds tags to an actor with optional stack count |
+| `RemoveOwnedGameplayTagsFromActor(Tags, Quantity=1)` | Removes tags from an actor with optional stack count |
 | `GetAttributeValueFromActor` | Gets an attribute's current value |
-| `MakeGameplayEffectSpec` | Creates an effect spec from a class |
+| `MakeGameplayEffectSpec(Effect, Level=1)` | Creates an effect spec from a class with optional level |
 | `AddSetByCallerMagnitude` | Adds a set-by-caller magnitude to a spec |
 | `ApplyGameplayEffectSpecToActor` | Applies an effect spec to an actor |
-| `ApplyGameplayEffectToActor` | Applies an effect class to an actor |
+| `ApplyGameplayEffectToActor(Effect, Level=1)` | Applies an effect class to an actor with optional level |
 
 ### Cancel Policy
 
@@ -178,7 +178,7 @@ Tags involved:
 
 | Class | Role |
 |-------|------|
-| `UGameplayActionComponent` | Owned by the actor; manages actions, effects, tags, and attributes |
+| `UGameplayActionComponent` | Owned by the actor; manages actions, effects, tags (via `FGameplayTagStackableContainer`), and attributes |
 | `UGameplayAction` | Base for all actions — Default (reusable) or Triggered (one‑shot) |
 | `UGameplayEffect` | Data asset defining modifiers, duration, period, stacking, and tags |
 | `UGameplayAttributeSet` | Container for `FGameplayAttributeData` properties |
@@ -190,6 +190,7 @@ Tags involved:
 ## Notes
 
 - All effect modifiers on periodic effects (`Period > 0`) operate on CurrentValue only — no BaseValue tracking, no revert on expiry.
+- Tags are reference-counted via `FGameplayTagStackableContainer`. Add/Remove accept a `Quantity` parameter; use `GetOwnedGameplayTagCount(Tag)` to query stack depth.
 - To inspect running effects, use `HasActiveEffect(Class)` or `HasActiveEffectSpecHandle(Handle)`.
 - Cost and cooldown effects are optional — if not set, no cost/cooldown is enforced.
 - If you see the warning "*plugin was designed for build 5.3.0*", either ignore it (safe) or remove `EngineVersion` from `.uplugin` to clear it.

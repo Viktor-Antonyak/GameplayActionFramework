@@ -16,10 +16,8 @@
 #include "Engine/Engine.h"
 #include "GameFramework/MovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "GameplayEffect.h"
 #include "UObject/Object.h"
 
-#include UE_INLINE_GENERATED_CPP_BY_NAME(GameplayActionComponent)
 
 DEFINE_LOG_CATEGORY(LogGameplayActionComponent);
 
@@ -43,7 +41,7 @@ void UGameplayActionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 	
 	GameplayActionActorInfo.Reset();
-	GameplayTagContainer.Reset();
+	GameplayTagContainer.Empty();
 
 	for (UGameplayAction* ActiveAction : ActiveActions)
 	{
@@ -169,6 +167,13 @@ void UGameplayActionComponent::TriggerActionByClass(TSubclassOf<UGameplayAction>
 		UE_LOG(LogGameplayActionComponent, Warning, TEXT("TriggerActionByClass: Invalid ActionClass or GameplayActionActorInfo."));
 		return;
 	}
+	
+	const UGameplayAction* DefaultAction = ActionClass->GetDefaultObject<UGameplayAction>();
+	if (DefaultAction && DefaultAction->ActionType == EGameplayActionType::Default)
+	{
+		UE_LOG(LogGameplayActionComponent, Warning, TEXT("TriggerActionByClass: Action class %s is a Default type and cannot be added as a triggered action."), *ActionClass->GetName());
+		return;
+	}
 
 	UGameplayAction* NewAction = NewObject<UGameplayAction>(this, ActionClass);
 	if (!IsValid(NewAction))
@@ -251,24 +256,33 @@ void UGameplayActionComponent::RemoveTriggeredAction(UGameplayAction* Action, bo
 }
 
 // --- Tag Management ---
-void UGameplayActionComponent::AddOwnedGameplayTags(FGameplayTagContainer Tags)
+void UGameplayActionComponent::AddOwnedGameplayTags(FGameplayTagContainer Tags, int32 Quantity)
 {
-	if (GameplayTagContainer.IsValid())
+	if (!Tags.IsValid() || Quantity <=0)
 	{
-		GameplayTagContainer->AppendTags(Tags);
-
-		OnGameplayTagsAdded.Broadcast(Tags);
+		return;
 	}
+
+	GameplayTagContainer.AddTags(Tags, Quantity);
+	
+	OnGameplayTagsAdded.Broadcast(Tags);
 }
 
-void UGameplayActionComponent::RemoveOwnedGameplayTags(FGameplayTagContainer Tags)
+void UGameplayActionComponent::RemoveOwnedGameplayTags(FGameplayTagContainer Tags, int32 Quantity)
 {
-	if (GameplayTagContainer.IsValid())
+	if (!Tags.IsValid() || Quantity <= 0)
 	{
-		GameplayTagContainer->RemoveTags(Tags);
-
-		OnGameplayTagsRemoved.Broadcast(Tags);
+		return;
 	}
+	
+	GameplayTagContainer.RemoveTags(Tags, Quantity);
+	
+	OnGameplayTagsRemoved.Broadcast(Tags);
+}
+
+int32 UGameplayActionComponent::GetOwnedGameplayTagCount(FGameplayTag Tag) const
+{
+	return GameplayTagContainer.GetTagCount(Tag);
 }
 
 // --- Attribute Management ---
@@ -379,7 +393,6 @@ void UGameplayActionComponent::InitActorInfo()
 	ActorInfo.ActionComponent = this;
 	
 	GameplayActionActorInfo = MakeShared<FGameplayActionActorInfo>(ActorInfo);
-	GameplayTagContainer = MakeShared<FGameplayTagContainer>();
 }
 
 void UGameplayActionComponent::InitAttributes()
@@ -431,9 +444,9 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
         return FActiveGameplayEffectHandle();
     }
 
-    const bool HaveAllTags = GameplayTagContainer->HasAll(Spec.Effect->ApplicationRequiredTags);
+    const bool HaveAllTags = GameplayTagContainer.HasAllMatchingTags(Spec.Effect->ApplicationRequiredTags);
    
-    const bool HaveBlockedTags = GameplayTagContainer->HasAny(Spec.Effect->ApplicationBlockedTags);
+    const bool HaveBlockedTags = GameplayTagContainer.HasAnyMatchingTags(Spec.Effect->ApplicationBlockedTags);
     
     if (!HaveAllTags || HaveBlockedTags)
     {
@@ -557,7 +570,7 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
     return ActiveGE.Handle;
 }
 
-FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect)
+FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, int32 Level)
 {
     if (!IsValid(Effect))
     {
@@ -574,6 +587,7 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectToSelf(
  
     FGameplayEffectSpec Spec;
     Spec.Effect = EffectCDO;
+	Spec.Level = Level;
  
     return ApplyGameplayEffectSpecToSelf(Spec);
 }
@@ -816,7 +830,7 @@ void UGameplayActionComponent::DisplayDebug(class UCanvas* Canvas, float& YL, fl
 
     if (GameplayTagContainer.IsValid())
     {
-        Canvas->DrawText(Font, FString::Printf(TEXT("  %s"), *GameplayTagContainer->ToStringSimple()), XPos + 8.f, YPos);
+        Canvas->DrawText(Font, FString::Printf(TEXT("  %s"), *GameplayTagContainer.ToStringAggregated()), XPos + 8.f, YPos);
         YPos += YL;
     }
 

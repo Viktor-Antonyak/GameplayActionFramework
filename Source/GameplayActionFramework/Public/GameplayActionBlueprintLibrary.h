@@ -35,11 +35,11 @@ public:
 
 	/** Adds owned gameplay tags to the actor. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
-	static bool AddOwnedGameplayTagsToActor(AActor* Actor, FGameplayTagContainer Tags);
+	static bool AddOwnedGameplayTagsToActor(AActor* Actor, FGameplayTagContainer Tags, int32 Quantity = 1);
 
 	/** Removes owned gameplay tags from the actor. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
-	static bool RemoveOwnedGameplayTagsFromActor(AActor* Actor, FGameplayTagContainer Tags);
+	static bool RemoveOwnedGameplayTagsFromActor(AActor* Actor, FGameplayTagContainer Tags, int32 Quantity = 1);
 
 	/** Returns the float value of an attribute from the actor. */
 	UFUNCTION(BlueprintCallable, Category ="Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
@@ -53,7 +53,7 @@ public:
 
 	/** Creates a gameplay effect spec from an effect class. */
 	UFUNCTION(BlueprintPure, Category = "Gameplay Effect")
-	static FGameplayEffectSpec MakeGameplayEffectSpec(TSubclassOf<UGameplayEffect> Effect);
+	static FGameplayEffectSpec MakeGameplayEffectSpec(TSubclassOf<UGameplayEffect> Effect, int32 Level = 1);
 
 	/** Adds a set-by-caller magnitude to the effect spec. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
@@ -65,5 +65,5 @@ public:
 	
 	/** Applies a gameplay effect to the target actor by effect class. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
-	static FActiveGameplayEffectHandle ApplyGameplayEffectToActor(AActor* Actor, TSubclassOf<UGameplayEffect> Effect);
+	static FActiveGameplayEffectHandle ApplyGameplayEffectToActor(AActor* Actor, TSubclassOf<UGameplayEffect> Effect, int32 Level = 1);
 };

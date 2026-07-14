@@ -10,10 +10,11 @@
 #include "GameplayActionActorInfo.h"
 #include "GameplayActionSpec.h"
 #include "GameplayAttributeSet.h"
-#include "Serialization/StructuredArchive.h"
 #include "Templates/SharedPointer.h"
 #include "Templates/SubclassOf.h"
 #include "GameplayTasksComponent.h"
+#include "GameplayTagStackableContainer.h"
+
 #if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8
 // For UE 5.8
 #include "StructUtils/InstancedStruct.h"
@@ -121,15 +122,22 @@ public:
 	
 	/** Returns owned Gameplay Tags from component */
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Gameplay Action")
-	FGameplayTagContainer GetOwnedGameplayTags() const { return GameplayTagContainer.IsValid() ? *GameplayTagContainer.Get() : FGameplayTagContainer(); }
+	FGameplayTagContainer GetOwnedGameplayTags() const
+	{
+		return GameplayTagContainer.IsValid() ? GameplayTagContainer.GetAggregatedGameplayTags() : FGameplayTagContainer();
+	}
 	
 	/** Add Gameplay Tags to component */
 	UFUNCTION(BlueprintCallable, Category="Gameplay Action")
-	void AddOwnedGameplayTags(UPARAM(meta=(GameplayTagFilter="GameplayEventTagsCategory")) FGameplayTagContainer Tags);
+	void AddOwnedGameplayTags(FGameplayTagContainer Tags, int32 Quantity = 1);
 	
 	/** Remove Gameplay Tags from component */
 	UFUNCTION(BlueprintCallable, Category="Gameplay Action")
-	void RemoveOwnedGameplayTags(UPARAM(meta=(GameplayTagFilter="GameplayEventTagsCategory")) FGameplayTagContainer Tags);
+	void RemoveOwnedGameplayTags(FGameplayTagContainer Tags, int32 Quantity = 1);
+
+	/** Returns how many sources are currently granting the tag (reference count). */
+	UFUNCTION(BlueprintPure, Category="Gameplay Action")
+	int32 GetOwnedGameplayTagCount(FGameplayTag Tag) const;
 
 	// --- Attribute Management ---
 	
@@ -164,7 +172,7 @@ public:
 	FActiveGameplayEffectHandle ApplyGameplayEffectSpecToSelf(const FGameplayEffectSpec& Spec);
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
-	FActiveGameplayEffectHandle ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect);
+	FActiveGameplayEffectHandle ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, int32 Level = 1);
 
 	/** Removes an active gameplay effect by its handle. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
@@ -202,7 +210,7 @@ protected:
 	void InitAttributes();
 	void InitActions();
 
-	TSharedPtr<FGameplayTagContainer> GameplayTagContainer;
+	FGameplayTagStackableContainer GameplayTagContainer;
 	
 	UPROPERTY()
 	TArray<UGameplayAction*> ActiveActions;
