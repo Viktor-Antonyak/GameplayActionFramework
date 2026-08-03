@@ -70,72 +70,58 @@ TSharedRef<SWidget> SGraphPinGameplayAttribute::GetDefaultValueWidget()
 			return SNew(STextBlock).Text(FText::FromString(Item->DisplayString));
 		})
 		.OnSelectionChanged_Lambda([this](TSharedPtr<FAttributeItem> SelectedItem, ESelectInfo::Type SelectInfo)
-		{
+        {
             if (SelectedItem.IsValid() && GraphPinObj)
             {
-                FString ValueString;
+                FGameplayAttribute NewAttributeValue;
                 if (SelectedItem->Property)
                 {
-                    ValueString = FString::Printf(TEXT("(Attribute=%s:%s)"), 
-                    *SelectedItem->Property->GetOwner<UObject>()->GetPathName(), 
-                    *SelectedItem->Property->GetName());
+                    NewAttributeValue = FGameplayAttribute(SelectedItem->Property);
                 }
-                else
-                {
-                    ValueString = TEXT("(Attribute=None)");
-                }
-
+        
+                FString ValueString;
+                UScriptStruct* StructType = FGameplayAttribute::StaticStruct();
+                StructType->ExportText(ValueString, &NewAttributeValue, &NewAttributeValue, nullptr, PPF_None, nullptr);
+        
                 if (GraphPinObj->GetDefaultAsString() != ValueString)
                 {
                     const FScopedTransaction Transaction(NSLOCTEXT("GraphEditor", "ChangeAttributePinValue", "Change Attribute Pin Value"));
-            
+        
                     GraphPinObj->GetSchema()->TrySetDefaultValue(*GraphPinObj, ValueString);
-                    
+        
                     if (UEdGraphNode* OwningNode = GraphPinObj->GetOwningNode())
                     {
                         OwningNode->PinDefaultValueChanged(GraphPinObj);
                     }
-
+        
                     Invalidate(EInvalidateWidgetReason::Layout);
                 }
             }
-		})
+        })
 		[
 			SNew(STextBlock)
 			.Text_Lambda([this]() -> FText
-			{
-				FString DefaultString = GraphPinObj->GetDefaultAsString();
-				if (DefaultString.IsEmpty() || DefaultString == TEXT("None") || DefaultString == TEXT("(Attribute=None)"))
-				{
-					return FText::FromString(TEXT("None"));
-				}
-
-				FString PropertyPath;
-				if (DefaultString.Split(TEXT("Attribute=\""), nullptr, &PropertyPath))
-				{
-					PropertyPath.Split(TEXT("\""), &PropertyPath, nullptr);
-				}
-				else if (DefaultString.Split(TEXT("Attribute="), nullptr, &PropertyPath))
-				{
-					PropertyPath.Split(TEXT(")"), &PropertyPath, nullptr);
-				}
-
-				if (PropertyPath.IsEmpty() || PropertyPath == TEXT("None"))
-				{
-					return FText::FromString(TEXT("None"));
-				}
-
-				FString ClassPath, PropertyName;
-				if (PropertyPath.Split(TEXT(":"), &ClassPath, &PropertyName))
-				{
-					FString DisplayClassName;
-					ClassPath.Split(TEXT("."), nullptr, &DisplayClassName, ESearchCase::IgnoreCase, ESearchDir::FromEnd);
-					DisplayClassName.RemoveFromStart(TEXT("U"));
-					DisplayClassName.RemoveFromEnd(TEXT("_C"));
-					return FText::FromString(FString::Printf(TEXT("%s.%s"), *DisplayClassName, *PropertyName));
-				}
-
-				return FText::FromString(PropertyPath);
-			})
+            {
+            	FString DefaultString = GraphPinObj->GetDefaultAsString();
+            	if (DefaultString.IsEmpty())
+            	{
+            		return FText::FromString(TEXT("None"));
+            	}
+            
+            	FGameplayAttribute ParsedAttribute;
+            	UScriptStruct* StructType = FGameplayAttribute::StaticStruct();
+            	StructType->ImportText(*DefaultString, &ParsedAttribute, nullptr, PPF_None, nullptr, StructType->GetName());
+            
+            	if (!ParsedAttribute.IsValid())
+            	{
+            		return FText::FromString(TEXT("None"));
+            	}
+            
+            	FString DisplayClassName = ParsedAttribute.GetAttributeSetClass() ? ParsedAttribute.GetAttributeSetClass()->GetName() : TEXT("");
+            	DisplayClassName.RemoveFromStart(TEXT("U"));
+            	DisplayClassName.RemoveFromEnd(TEXT("_C"));
+            
+            	return FText::FromString(FString::Printf(TEXT("%s.%s"), *DisplayClassName, *ParsedAttribute.GetAttributeName()));
+            })
 		];
 }

@@ -7,7 +7,7 @@
 #include "AssetToolsModule.h"
 #include "ContentBrowserMenuContexts.h"
 #include "ContentBrowserModule.h"
-#include "Blueprints/GameplayEffectExecutionCalculationBlueprint.h"
+#include "Blueprints/GameplayEffectExecutionCalcBlueprint.h"
 #include "GameplayActionFrameworkFactories.h"
 #include "IContentBrowserSingleton.h"
 #include "Blueprint/BlueprintSupport.h"
@@ -27,7 +27,7 @@ FLinearColor UAssetDefinition_GameplayEffectExecutionCalculation::GetAssetColor(
 
 TSoftClassPtr<UObject> UAssetDefinition_GameplayEffectExecutionCalculation::GetAssetClass() const
 {
-	return UGameplayEffectExecutionCalculationBlueprint::StaticClass();
+	return UGameplayEffectExecutionCalcBlueprint::StaticClass();
 }
 
 TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayEffectExecutionCalculation::GetAssetCategories() const
@@ -95,14 +95,14 @@ namespace MenuExtension_GameplayEffectExecutionCalculation
 		{
 			FToolMenuOwnerScoped OwnerScoped(UE_MODULE_NAME);
 
-			UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayEffectExecutionCalculationBlueprint::StaticClass());
+			UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayEffectExecutionCalcBlueprint::StaticClass());
 
 			FToolMenuSection& Section = Menu->FindOrAddSection("GetAssetActions");
 			Section.AddDynamicEntry(NAME_None, FNewToolMenuSectionDelegate::CreateLambda([](FToolMenuSection& InSection)
 			{
 				if (const UContentBrowserAssetContextMenuContext* Context = UContentBrowserAssetContextMenuContext::FindContextWithAssets(InSection))
 				{
-					if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayEffectExecutionCalculationBlueprint::StaticClass()))
+					if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayEffectExecutionCalcBlueprint::StaticClass()))
 					{
 						const TAttribute<FText> Label = LOCTEXT("ExecCalc_NewDerivedBlueprint", "Create Child Execution Calculation");
 						const TAttribute<FText> ToolTip = LOCTEXT("ExecCalc_NewDerivedBlueprintTooltip", "Creates a Child Gameplay Effect Execution Calculation Blueprint based on the current one.");

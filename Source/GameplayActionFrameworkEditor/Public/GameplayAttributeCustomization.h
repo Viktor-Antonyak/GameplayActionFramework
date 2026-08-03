@@ -32,6 +32,8 @@ public:
 	typedef FAttributeItem FAttributeItemType;
 
 private:
+	
+	TSharedPtr<IPropertyHandle> CachedStructPropertyHandle;
 	TSharedPtr<IPropertyHandle> AttributePropertyHandle;
 	TArray<TSharedPtr<FAttributeItem>> AttributeOptions;
 

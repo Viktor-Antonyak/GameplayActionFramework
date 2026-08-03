@@ -15,11 +15,13 @@
 #include "GameplayTasksComponent.h"
 #include "GameplayTagStackableContainer.h"
 
-#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION >= 8
-// For UE 5.8
+// InstancedStruct.h path differs across engine versions (StructUtils plugin vs engine-native).
+// __has_include avoids hardcoding a specific version boundary, which the maintainer cannot
+// verify across all supported engine versions. If you hit a compile error here on your engine
+// version, please open an issue with your exact UE version.
+#if __has_include("StructUtils/InstancedStruct.h")
 #include "StructUtils/InstancedStruct.h"
 #else
-// For UE 5.7, 5.6 and older
 #include "InstancedStruct.h"
 #endif
 
@@ -32,6 +34,12 @@ class UGameplayAction;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FActionActivated, TSubclassOf<UGameplayAction>, Action);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FActionEnded, TSubclassOf<UGameplayAction>, Action, bool, bWasCanceled);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEffectAdded, TSubclassOf<UGameplayEffect>, Effect);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEffectRemoved, TSubclassOf<UGameplayEffect>, Effect);
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAttributeChanged, const FGameplayAttribute&, Attribute, float, NewValue, float, OldValue);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGameplayTagsAdded, const FGameplayTagContainer&, GameplayTags);
 
@@ -64,11 +72,12 @@ struct FActionInitializationData
 
 /** Component that manages Gameplay Actions and Attributes. */
 UCLASS(ClassGroup=(Gameplay), meta=(BlueprintSpawnableComponent))
-class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionComponent : public UGameplayTasksComponent
+class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionComponent : public UGameplayTasksComponent, public IGameplayActionInterface
 {
 	GENERATED_BODY()
 
 public:
+	
 	explicit UGameplayActionComponent(const FObjectInitializer& ObjectInitializer);
 
 	TSharedPtr<FGameplayActionActorInfo> GetGameplayActionActorInfo() const
@@ -142,11 +151,11 @@ public:
 	// --- Attribute Management ---
 	
 	/** Returns specific owned Attribute Set from component */
-	UFUNCTION(BlueprintCallable, Category="Gameplay Attribute")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute")
 	UGameplayAttributeSet* GetAttributeSetByClass(TSubclassOf<UGameplayAttributeSet> AttributeClass) const;
 	
 	/** Returns the float value of an attribute from the attribute sets. */
-	UFUNCTION(BlueprintCallable, Category="Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
 	float GetAttributeValue(const FGameplayAttribute& Attribute) const;
 
 	/** Returns the base value of an attribute. */
@@ -154,11 +163,11 @@ public:
 	float GetAttributeBaseValue(const FGameplayAttribute& Attribute) const;
 
 	/** Sets the float value of an attribute, triggering Pre/PostChange callbacks. */
-	UFUNCTION(BlueprintCallable, Category="Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
 	void SetAttributeValue(const FGameplayAttribute& Attribute, float NewValue);
 
 	/** Adds an attribute set to this component. */
-	UFUNCTION(BlueprintCallable, Category="Gameplay Attribute")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute")
 	UGameplayAttributeSet* AddAttributeSet(TSubclassOf<UGameplayAttributeSet> AttributeSetClass);
 
 	// --- Gameplay Effect Management ---
@@ -190,19 +199,35 @@ public:
 	void DisplayDebug(class UCanvas* Canvas, float& YL, float& YPos) const;
 	
 	// --- Delegates ---
-	UPROPERTY(BlueprintAssignable, Category="Gameplay Action")
+	UPROPERTY(BlueprintAssignable, Category = "Gameplay Action")
 	FActionActivated OnActionActivated;
 	
-	UPROPERTY(BlueprintAssignable, Category="Gameplay Action")
+	UPROPERTY(BlueprintAssignable, Category = "Gameplay Action")
 	FActionEnded OnActionEnded;
-
-	UPROPERTY(BlueprintAssignable, Category="Gameplay Action")
+	
+	UPROPERTY(BlueprintAssignable, Category = "Gameplay Effect")
+	FEffectAdded OnEffectAdded;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Gameplay Effect")
+	FEffectRemoved OnEffectRemoved;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Gameplay Attribute")
+	FAttributeChanged OnAttributeChanged;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Gameplay Tag")
 	FGameplayTagsAdded OnGameplayTagsAdded;
 
-	UPROPERTY(BlueprintAssignable, Category="Gameplay Action")
+	UPROPERTY(BlueprintAssignable, Category = "Gameplay Tag")
 	FGameplayTagsRemoved OnGameplayTagsRemoved;
+	
+	// Interface
+	virtual UGameplayActionComponent* GetGameplayActionComponent_Implementation() const override
+	{
+		return const_cast<UGameplayActionComponent*>(this);
+	}
 
 protected:
+	
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 

@@ -24,7 +24,7 @@ DEFINE_LOG_CATEGORY(LogGameplayActionComponent);
 UGameplayActionComponent::UGameplayActionComponent(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	PrimaryComponentTick.bCanEverTick = true;
 }
 
 void UGameplayActionComponent::BeginPlay()
@@ -39,11 +39,12 @@ void UGameplayActionComponent::BeginPlay()
 void UGameplayActionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
-	
+
 	GameplayActionActorInfo.Reset();
 	GameplayTagContainer.Empty();
 
-	for (UGameplayAction* ActiveAction : ActiveActions)
+	const TArray<UGameplayAction*> ActiveActionsCopy = ActiveActions;
+	for (UGameplayAction* ActiveAction : ActiveActionsCopy)
 	{
 		if (IsValid(ActiveAction))
 		{
@@ -51,14 +52,15 @@ void UGameplayActionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		}
 	}
 
-	for (UGameplayAction* TriggeredAction : ActiveTriggeredActions)
+	const TArray<UGameplayAction*> ActiveTriggeredActionsCopy = ActiveTriggeredActions;
+	for (UGameplayAction* TriggeredAction : ActiveTriggeredActionsCopy)
 	{
 		if (IsValid(TriggeredAction))
 		{
 			TriggeredAction->RequestEndAction();
 		}
 	}
-	
+
 	for (const FGameplayActionSpec& AddedAction : AddedActions)
 	{
 		if (IsValid(AddedAction.Action))
@@ -66,11 +68,11 @@ void UGameplayActionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			AddedAction.Action->MarkAsGarbage();
 		}
 	}
-	
+
 	ActiveActions.Empty();
 	ActiveTriggeredActions.Empty();
 	AddedActions.Empty();
-	AttributeSets.Empty(); 
+	AttributeSets.Empty();
 }
 
 // --- Action Management ---
@@ -369,6 +371,7 @@ UGameplayAttributeSet* UGameplayActionComponent::AddAttributeSet(TSubclassOf<UGa
 	}
 
 	UGameplayAttributeSet* NewAttributeSet = NewObject<UGameplayAttributeSet>(GetOwner(), AttributeSetClass);
+    NewAttributeSet->SetOwningActionComponent(this);
 	AttributeSets.Add(NewAttributeSet);
 	return NewAttributeSet;
 }
@@ -548,6 +551,8 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
     }
 
     ActiveEffects.Add(ActiveGE);
+	
+	OnEffectAdded.Broadcast(Spec.Effect->GetClass());
 
     if (Spec.Effect->DurationPolicy == EGameplayEffectDuration::HasDuration && Spec.Effect->DurationMagnitude > 0.f)
     {
@@ -615,6 +620,8 @@ bool UGameplayActionComponent::RemoveActiveGameplayEffect(const FActiveGameplayE
             RemoveOwnedGameplayTags(Effect.Spec.Effect->GrantedTags);
 
             ActiveEffects.RemoveAtSwap(Index);
+        	
+        	OnEffectRemoved.Broadcast(Effect.Spec.Effect->GetClass());
 
             return true;
         }

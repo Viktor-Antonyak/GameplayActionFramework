@@ -5,12 +5,22 @@
 
 #include "CoreMinimal.h"
 #include "GameplayActionActorInfo.h"
+#include "GameplayActionInterface.h"
 #include "UObject/Object.h"
 #include "GameplayTagContainer.h"
 #include "Templates/SharedPointer.h"
 #include "Templates/SubclassOf.h"
 #include "GameplayTaskOwnerInterface.h"
+
+// InstancedStruct.h path differs across engine versions (StructUtils plugin vs engine-native).
+// __has_include avoids hardcoding a specific version boundary, which the maintainer cannot
+// verify across all supported engine versions. If you hit a compile error here on your engine
+// version, please open an issue with your exact UE version.
+#if __has_include("StructUtils/InstancedStruct.h")
 #include "StructUtils/InstancedStruct.h"
+#else
+#include "InstancedStruct.h"
+#endif
 
 #include "GameplayAction.generated.h"
 
@@ -38,7 +48,7 @@ enum class EGameplayActionType : uint8
 UENUM(BlueprintType)
 enum class EGameplayActionCancelPolicy : uint8
 {
-    /** Activation fails if any targeted action cannot be cancelled */
+    /** Activation fails if any targeted action cannot be canceled */
     Block,
 
     /** Attempts to cancel but activates regardless of failures */
@@ -76,7 +86,7 @@ struct FGameplayActionInfoTags
  * Base class for gameplay actions.
  */
 UCLASS(Blueprintable, BlueprintType, Abstract)
-class GAMEPLAYACTIONFRAMEWORK_API UGameplayAction : public UObject, public IGameplayTaskOwnerInterface
+class GAMEPLAYACTIONFRAMEWORK_API UGameplayAction : public UObject, public IGameplayTaskOwnerInterface, public IGameplayActionInterface
 {
 	GENERATED_BODY()
 
@@ -125,18 +135,24 @@ public:
 	{
 		return GameplayActionInfoTags.CancelOtherActions;
 	}
-
-protected:
-
-	virtual UWorld* GetWorld() const override;
-
-	// IGameplayTaskOwnerInterface
+	
+	// Start of IGameplayTaskOwnerInterface
 	virtual UGameplayTasksComponent* GetGameplayTasksComponent(const UGameplayTask& Task) const override;
 	virtual AActor* GetGameplayTaskOwner(const UGameplayTask* Task) const override;
 	virtual AActor* GetGameplayTaskAvatar(const UGameplayTask* Task) const override;
 	virtual void OnGameplayTaskInitialized(UGameplayTask& Task) override;
 	virtual void OnGameplayTaskActivated(UGameplayTask& Task) override;
 	virtual void OnGameplayTaskDeactivated(UGameplayTask& Task) override;
+	// End of IGameplayTaskOwnerInterface
+
+	virtual UGameplayActionComponent* GetGameplayActionComponent_Implementation() const override
+	{
+		return GetActionComponent();
+	}
+	
+protected:
+
+	virtual UWorld* GetWorld() const override;
 
 	UFUNCTION(BlueprintCallable, Category="Gameplay Action")
 	void EndAction();
@@ -145,15 +161,15 @@ protected:
 	void CancelAction();
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Cost")
-	bool CommitCost();
+	bool CommitCost(int32 CostLevel = 1);
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Cooldown")
-	bool CommitCooldown();
+	bool CommitCooldown(int32 CooldownLevel = 1);
 
 	UFUNCTION(BlueprintCallable, Category="Gameplay Action")
-	void SetCanBeCanceled(bool CanBeCanceled) 
+	void SetCanBeCanceled(bool bNewCanBeCanceled) 
 	{
-		bCanBeCanceled = CanBeCanceled;
+		bCanBeCanceled = bNewCanBeCanceled;
 	}
 	
 	/** Called when the action is executed (Standard actions). */
@@ -192,7 +208,7 @@ protected:
 	{ 
 		return CachedActorInfo ? CachedActorInfo->MovementComponent.Get() : nullptr; 
 	}
-
+	
 	UFUNCTION(BlueprintCallable, Category="Gameplay Action | Action Info")
 	UGameplayActionComponent* GetActionComponent() const 
 	{ 
@@ -231,15 +247,19 @@ private:
 
 	bool bCanBeCanceled = true;
 
-	bool CanCancelAllActions();
+	bool CanCancelAllActions() const;
 
-	bool CheckBlockedTags();
+	bool CheckBlockedTags() const;
 
-	bool CheckRequiredTags();
+	bool CheckRequiredTags() const;
 
-	bool CheckBlockedActionTags();
+	bool CheckBlockedActionTags() const;
 
-	bool CanApplyCost();
+	bool CanApplyCost() const;
+	
+	void EndAllGameplayTasks();
+	
+	TArray<TObjectPtr<UGameplayTask>> GameplayTasks;
 
 	UPROPERTY()
 	TArray<USkeletalMeshComponent*> MeshComponents;

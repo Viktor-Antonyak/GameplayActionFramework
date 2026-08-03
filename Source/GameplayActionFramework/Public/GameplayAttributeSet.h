@@ -4,13 +4,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/NoExportTypes.h"
 #include "UObject/UnrealType.h"
 #include "GameplayAttributeSet.generated.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogGameplayAttributeSet, Log, All);
 
 class UGameplayAttributeSet;
+class UGameplayActionComponent;
 
 /**
  * Structure that holds the actual values of an attribute.
@@ -93,6 +93,9 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayAttributeSet : public UObject
 public:
 	UGameplayAttributeSet();
 
+	/** Called by the owning component right after creation. Not meant to be called manually. */
+	void SetOwningActionComponent(UGameplayActionComponent* InComponent);
+
 	/** Called just before an attribute's current value is changed. Return clamped value. */
 	UFUNCTION(BlueprintNativeEvent, Category = "Attributes")
 	float PreAttributeChange(const FGameplayAttribute& Attribute, float NewValue);
@@ -125,7 +128,13 @@ public:
 	void InitNumericValue(const FGameplayAttribute& Attribute, float NewValue);
 
 protected:
+	
 	/** Internal helper to find the data struct for an attribute property */
 	FGameplayAttributeData* GetAttributeData(const FGameplayAttribute& Attribute);
 	const FGameplayAttributeData* GetAttributeData(const FGameplayAttribute& Attribute) const;
+	
+	void BroadcastAttributeChanges(const FGameplayAttribute& Attribute, float NewValue, float OldValue);
+
+	UPROPERTY()
+	TWeakObjectPtr<UGameplayActionComponent> OwningActionComponent;
 };

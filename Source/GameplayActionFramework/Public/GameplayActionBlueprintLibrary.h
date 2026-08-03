@@ -42,7 +42,7 @@ public:
 	static bool RemoveOwnedGameplayTagsFromActor(AActor* Actor, FGameplayTagContainer Tags, int32 Quantity = 1);
 
 	/** Returns the float value of an attribute from the actor. */
-	UFUNCTION(BlueprintCallable, Category ="Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
 	static float GetAttributeValueFromActor(AActor* Actor, const FGameplayAttribute& Attribute);
 
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal (GameplayAttributeStruct)", CompactNodeTitle = "==", AutoCreateRefTerm = "Attribute1, Attribute2"), Category = "Gameplay Attribute | Utilities")

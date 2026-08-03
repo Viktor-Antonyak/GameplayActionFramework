@@ -5,15 +5,15 @@
 
 #include "CoreMinimal.h"
 #include "Engine/Blueprint.h"
-#include "GameplayEffectMagnitudeCalculationBlueprint.generated.h"
+#include "GameplayActionEffectBlueprint.generated.h"
 
 UCLASS(BlueprintType)
-class GAMEPLAYACTIONFRAMEWORK_API UGameplayEffectMagnitudeCalculationBlueprint : public UBlueprint
+class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionEffectBlueprint : public UBlueprint
 {
 	GENERATED_BODY()
 
 public:
-	UGameplayEffectMagnitudeCalculationBlueprint(const FObjectInitializer& ObjectInitializer);
+	UGameplayActionEffectBlueprint(const FObjectInitializer& ObjectInitializer);
 
 #if WITH_EDITOR
 	virtual bool SupportedByDefaultBlueprintFactory() const override { return false; }

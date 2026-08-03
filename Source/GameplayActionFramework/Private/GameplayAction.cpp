@@ -5,6 +5,7 @@
 #include "GameFramework/Actor.h"
 #include "GameplayActionComponent.h"
 #include "GameplayEffect.h"
+#include "GameplayActionTasks/GameplayActionTask.h"
 
 DEFINE_LOG_CATEGORY(LogGameplayAction);
 
@@ -52,21 +53,25 @@ bool UGameplayAction::RequestExecuteAction()
 	const bool bFoundBlockAction = CheckBlockedActionTags();
 	const bool bHasBlockedTags = CheckBlockedTags();
 	const bool bHasRequiredTags = CheckRequiredTags();
-	const bool bCanceledAllActions = CanCancelAllActions();
 	const bool bHasActiveCooldownEffect = GetActionComponent()->HasActiveEffect(CooldownEffect);
 	
-	if (!bIsActive && CanExecuteAction() && !bFoundBlockAction && 
-		(bCanceledAllActions || CancelPolicy == EGameplayActionCancelPolicy::IgnoreFailed) && 
-		bHasRequiredTags && !bHasBlockedTags && !bHasActiveCooldownEffect)
+	if (bIsActive || !CanExecuteAction() || bFoundBlockAction || !bHasRequiredTags || bHasBlockedTags || bHasActiveCooldownEffect)
 	{
-		bIsActive = true;
-		GetActionComponent()->AddActiveAction(this);
-		GetActionComponent()->AddOwnedGameplayTags(GameplayActionInfoTags.GrantTags);
-		
-		OnExecuteAction();
-		return true;
+		return false;
 	}
-	return false;
+    
+	const bool bCanceledAllActions = CanCancelAllActions();
+	if (!bCanceledAllActions && CancelPolicy == EGameplayActionCancelPolicy::Block)
+	{
+		return false;
+	}
+    
+	bIsActive = true;
+	GetActionComponent()->AddActiveAction(this);
+	GetActionComponent()->AddOwnedGameplayTags(GameplayActionInfoTags.GrantTags);
+    
+	OnExecuteAction();
+	return true;
 }
 
 bool UGameplayAction::RequestTriggerAction(const TSharedPtr<FGameplayActionActorInfo>& ActorInfo, int32 ActionLevel, const FInstancedStruct& Payload)
@@ -84,26 +89,28 @@ bool UGameplayAction::RequestTriggerAction(const TSharedPtr<FGameplayActionActor
 
 	InitializeAction(ActorInfo, ActionLevel);
 	
-	FGameplayTag ThisActionTag = GetActionTag();
-	
 	const bool bFoundBlockAction = CheckBlockedActionTags();
 	const bool bHasBlockedTags = CheckBlockedTags();
 	const bool bHasRequiredTags = CheckRequiredTags();
-	const bool bCanceledAllActions = CanCancelAllActions();
 	const bool bHasActiveCooldownEffect = GetActionComponent()->HasActiveEffect(CooldownEffect);
 	
-	if (!bIsActive && CanExecuteAction() && !bFoundBlockAction && 
-		(bCanceledAllActions || CancelPolicy == EGameplayActionCancelPolicy::IgnoreFailed) && 
-		bHasRequiredTags && !bHasBlockedTags && !bHasActiveCooldownEffect)
+	if (bIsActive || !CanExecuteAction() || bFoundBlockAction || !bHasRequiredTags || bHasBlockedTags || bHasActiveCooldownEffect)
 	{
-		bIsActive = true;
-		GetActionComponent()->AddTriggeredAction(this);
-		GetActionComponent()->AddOwnedGameplayTags(GameplayActionInfoTags.GrantTags);
-		
-		OnActionTriggered(Payload);
-		return true;
+		return false;
 	}
-	return false;
+	
+	const bool bCanceledAllActions = CanCancelAllActions();
+	if (!bCanceledAllActions && CancelPolicy == EGameplayActionCancelPolicy::Block)
+	{
+		return false;
+	}
+	
+	bIsActive = true;
+	GetActionComponent()->AddTriggeredAction(this);
+	GetActionComponent()->AddOwnedGameplayTags(GameplayActionInfoTags.GrantTags);
+		
+	OnActionTriggered(Payload);
+	return true;
 }
 
 void UGameplayAction::RequestEndAction()
@@ -161,17 +168,16 @@ AActor* UGameplayAction::GetGameplayTaskAvatar(const UGameplayTask* Task) const
 
 void UGameplayAction::OnGameplayTaskInitialized(UGameplayTask& Task)
 {
-	IGameplayTaskOwnerInterface::OnGameplayTaskInitialized(Task);
+	GameplayTasks.AddUnique(&Task);
 }
 
 void UGameplayAction::OnGameplayTaskActivated(UGameplayTask& Task)
 {
-	IGameplayTaskOwnerInterface::OnGameplayTaskActivated(Task);
 }
 
 void UGameplayAction::OnGameplayTaskDeactivated(UGameplayTask& Task)
 {
-	IGameplayTaskOwnerInterface::OnGameplayTaskDeactivated(Task);
+	GameplayTasks.Remove(&Task);
 }
 // End of IGameplayTaskOwnerInterface
 
@@ -185,7 +191,11 @@ void UGameplayAction::EndAction()
 	bIsActive = false;
 	bCanBeCanceled = true;
 	
+	EndAllGameplayTasks();
+	
 	OnEndAction(false);
+	
+	GetActionComponent()->EndAllResourceConsumingTasksOwnedBy(*this);
 	
 	if (ActionType == EGameplayActionType::Default)
 	{
@@ -209,6 +219,8 @@ void UGameplayAction::CancelAction()
 	bIsActive = false;
 	bCanBeCanceled = true;
 	
+	EndAllGameplayTasks();
+	
 	OnEndAction(true);
 	
 	if (ActionType == EGameplayActionType::Default)
@@ -223,17 +235,17 @@ void UGameplayAction::CancelAction()
 	GetActionComponent()->RemoveOwnedGameplayTags(GameplayActionInfoTags.GrantTags);
 }
 
-bool UGameplayAction::CommitCost()
+bool UGameplayAction::CommitCost(int32 CostLevel)
 {
 	if (!CanApplyCost())
 	{
 		return false;
 	}
 	
-	return GetActionComponent()->ApplyGameplayEffectToSelf(CostEffect).IsValid();
+	return GetActionComponent()->ApplyGameplayEffectToSelf(CostEffect, CostLevel).IsValid();
 }
 
-bool UGameplayAction::CommitCooldown()
+bool UGameplayAction::CommitCooldown(int32 CooldownLevel)
 {
     UGameplayActionComponent* ActionComponent = GetActionComponent();
     
@@ -242,7 +254,7 @@ bool UGameplayAction::CommitCooldown()
         return false;
     }
 
-    return ActionComponent->ApplyGameplayEffectToSelf(CooldownEffect).IsValid();
+    return ActionComponent->ApplyGameplayEffectToSelf(CooldownEffect, CooldownLevel).IsValid();
 }
 
 TArray<USkeletalMeshComponent*> UGameplayAction::GetSkeletalMeshComponents() const
@@ -250,7 +262,7 @@ TArray<USkeletalMeshComponent*> UGameplayAction::GetSkeletalMeshComponents() con
 	return MeshComponents;
 }
 
-bool UGameplayAction::CanCancelAllActions()
+bool UGameplayAction::CanCancelAllActions() const 
 {
     bool bCanceledAllActions = true;
     
@@ -273,17 +285,17 @@ bool UGameplayAction::CanCancelAllActions()
     return bCanceledAllActions;
 }
 
-bool UGameplayAction::CheckBlockedTags()
+bool UGameplayAction::CheckBlockedTags() const 
 {
     return GetActionComponent()->GetOwnedGameplayTags().HasAny(GameplayActionInfoTags.BlockedByTags);
 }
 
-bool UGameplayAction::CheckRequiredTags()
+bool UGameplayAction::CheckRequiredTags() const 
 {
     return GetActionComponent()->GetOwnedGameplayTags().HasAll(GameplayActionInfoTags.RequireTags);
 }
 
-bool UGameplayAction::CheckBlockedActionTags()
+bool UGameplayAction::CheckBlockedActionTags() const 
 {
     FGameplayTag ThisActionTag = GetActionTag();
     
@@ -296,7 +308,7 @@ bool UGameplayAction::CheckBlockedActionTags()
     return FoundBlockAction != nullptr;
 }
 
-bool UGameplayAction::CanApplyCost()
+bool UGameplayAction::CanApplyCost() const
 {
     UGameplayActionComponent* ActionComponent = GetActionComponent();
     
@@ -347,6 +359,14 @@ bool UGameplayAction::CanApplyCost()
     }
 
     return true;
+}
+
+void UGameplayAction::EndAllGameplayTasks()
+{
+	for (UGameplayTask* Task : GameplayTasks)
+	{
+		Task->EndTask();
+	}
 }
 
 void UGameplayAction::OnExecuteAction_Implementation() {}

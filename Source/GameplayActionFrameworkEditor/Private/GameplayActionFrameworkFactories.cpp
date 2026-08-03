@@ -8,9 +8,9 @@
 #include "GameplayEffectMagnitudeCalculation.h"
 #include "Blueprints/GameplayActionBlueprint.h"
 #include "Blueprints/GameplayAttributeSetBlueprint.h"
-#include "Blueprints/GameplayEffectBlueprint.h"
-#include "Blueprints/GameplayEffectMagnitudeCalculationBlueprint.h"
-#include "Blueprints/GameplayEffectExecutionCalculationBlueprint.h"
+#include "Blueprints/GameplayActionEffectBlueprint.h"
+#include "Blueprints/GameplayEffectMagnitudeCalcBlueprint.h"
+#include "Blueprints/GameplayEffectExecutionCalcBlueprint.h"
 #include "GameplayEffectExecutionCalculation.h"
 #include "Kismet2/KismetEditorUtilities.h"
 #include "Kismet2/BlueprintEditorUtils.h"
@@ -67,41 +67,41 @@ UGameplayEffectFactory::UGameplayEffectFactory()
 {
 	bCreateNew = true;
 	bEditAfterNew = true;
-	SupportedClass = UGameplayEffectBlueprint::StaticClass();
+	SupportedClass = UGameplayActionEffectBlueprint::StaticClass();
 }
 
 UObject* UGameplayEffectFactory::FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
 	UClass* ValidParent = ParentClass ? ParentClass.Get() : UGameplayEffect::StaticClass();
 
-	return FKismetEditorUtilities::CreateBlueprint(ValidParent, InParent, InName, BPTYPE_Normal, UGameplayEffectBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass());
+	return FKismetEditorUtilities::CreateBlueprint(ValidParent, InParent, InName, BPTYPE_Normal, UGameplayActionEffectBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass());
 }
 
 UGameplayEffectMagnitudeCalculationFactory::UGameplayEffectMagnitudeCalculationFactory()
 {
 	bCreateNew = true;
 	bEditAfterNew = true;
-	SupportedClass = UGameplayEffectMagnitudeCalculationBlueprint::StaticClass();
+	SupportedClass = UGameplayEffectMagnitudeCalcBlueprint::StaticClass();
 }
 
 UObject* UGameplayEffectMagnitudeCalculationFactory::FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
 	UClass* ValidParent = ParentClass ? ParentClass.Get() : UGameplayEffectMagnitudeCalculation::StaticClass();
 
-	return FKismetEditorUtilities::CreateBlueprint(ValidParent, InParent, InName, BPTYPE_Normal, UGameplayEffectMagnitudeCalculationBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass());
+	return FKismetEditorUtilities::CreateBlueprint(ValidParent, InParent, InName, BPTYPE_Normal, UGameplayEffectMagnitudeCalcBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass());
 }
 
 UGameplayEffectExecutionCalculationFactory::UGameplayEffectExecutionCalculationFactory()
 {
 	bCreateNew = true;
 	bEditAfterNew = true;
-	SupportedClass = UGameplayEffectExecutionCalculationBlueprint::StaticClass();
+	SupportedClass = UGameplayEffectExecutionCalcBlueprint::StaticClass();
 }
 
 UObject* UGameplayEffectExecutionCalculationFactory::FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn)
 {
 	UClass* ValidParent = ParentClass ? ParentClass.Get() : UGameplayEffectExecutionCalculation::StaticClass();
 
-	return FKismetEditorUtilities::CreateBlueprint(ValidParent, InParent, InName, BPTYPE_Normal, UGameplayEffectExecutionCalculationBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass());
+	return FKismetEditorUtilities::CreateBlueprint(ValidParent, InParent, InName, BPTYPE_Normal, UGameplayEffectExecutionCalcBlueprint::StaticClass(), UBlueprintGeneratedClass::StaticClass());
 }
 

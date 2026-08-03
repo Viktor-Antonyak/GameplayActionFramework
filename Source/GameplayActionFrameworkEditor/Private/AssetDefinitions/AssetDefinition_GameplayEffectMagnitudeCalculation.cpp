@@ -7,7 +7,7 @@
 #include "AssetToolsModule.h"
 #include "ContentBrowserMenuContexts.h"
 #include "ContentBrowserModule.h"
-#include "Blueprints/GameplayEffectMagnitudeCalculationBlueprint.h"
+#include "Blueprints/GameplayEffectMagnitudeCalcBlueprint.h"
 #include "GameplayActionFrameworkFactories.h"
 #include "IContentBrowserSingleton.h"
 #include "Blueprint/BlueprintSupport.h"
@@ -27,7 +27,7 @@ FLinearColor UAssetDefinition_GameplayEffectMagnitudeCalculation::GetAssetColor(
 
 TSoftClassPtr<UObject> UAssetDefinition_GameplayEffectMagnitudeCalculation::GetAssetClass() const
 {
-	return UGameplayEffectMagnitudeCalculationBlueprint::StaticClass();
+	return UGameplayEffectMagnitudeCalcBlueprint::StaticClass();
 }
 
 TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayEffectMagnitudeCalculation::GetAssetCategories() const
@@ -95,14 +95,14 @@ namespace MenuExtension_GameplayEffectMagnitudeCalculation
 		{
 			FToolMenuOwnerScoped OwnerScoped(UE_MODULE_NAME);
 
-			UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayEffectMagnitudeCalculationBlueprint::StaticClass());
+			UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayEffectMagnitudeCalcBlueprint::StaticClass());
 
 			FToolMenuSection& Section = Menu->FindOrAddSection("GetAssetActions");
 			Section.AddDynamicEntry(NAME_None, FNewToolMenuSectionDelegate::CreateLambda([](FToolMenuSection& InSection)
 			{
 				if (const UContentBrowserAssetContextMenuContext* Context = UContentBrowserAssetContextMenuContext::FindContextWithAssets(InSection))
 				{
-					if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayEffectMagnitudeCalculationBlueprint::StaticClass()))
+					if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayEffectMagnitudeCalcBlueprint::StaticClass()))
 					{
 						const TAttribute<FText> Label = LOCTEXT("MagnitudeCalc_NewDerivedBlueprint", "Create Child Magnitude Calculation");
 						const TAttribute<FText> ToolTip = LOCTEXT("MagnitudeCalc_NewDerivedBlueprintTooltip", "Creates a Child Gameplay Effect Magnitude Calculation Blueprint based on the current one.");

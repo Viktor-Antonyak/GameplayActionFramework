@@ -2,6 +2,7 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 #include "GameplayAttributeSet.h"
+#include "GameplayActionComponent.h"
 
 DEFINE_LOG_CATEGORY(LogGameplayAttributeSet);
 
@@ -26,6 +27,11 @@ UGameplayAttributeSet::UGameplayAttributeSet()
 {
 }
 
+void UGameplayAttributeSet::SetOwningActionComponent(UGameplayActionComponent* InComponent)
+{
+	OwningActionComponent = InComponent;
+}
+
 float UGameplayAttributeSet::GetNumericValue(const FGameplayAttribute& Attribute) const
 {
 	const FGameplayAttributeData* Data = GetAttributeData(Attribute);
@@ -41,6 +47,7 @@ float UGameplayAttributeSet::GetBaseValue(const FGameplayAttribute& Attribute) c
 void UGameplayAttributeSet::SetNumericValue(const FGameplayAttribute& Attribute, float NewValue)
 {
 	FGameplayAttributeData* Data = GetAttributeData(Attribute);
+	
 	if (Data)
 	{
 		const float OldValue = Data->GetCurrentValue();
@@ -50,20 +57,29 @@ void UGameplayAttributeSet::SetNumericValue(const FGameplayAttribute& Attribute,
 		Data->SetCurrentValue(NewValue);
 		
 		PostAttributeChange(Attribute, NewValue, OldValue);
+		
+		BroadcastAttributeChanges(Attribute, NewValue, OldValue);
 	}
 }
 
 void UGameplayAttributeSet::SetBaseValue(const FGameplayAttribute& Attribute, float NewValue)
 {
-    FGameplayAttributeData* Data = GetAttributeData(Attribute);
-
-    if (Data) 
-    {
-        float Delta = NewValue - Data->GetBaseValue();
-        
-        Data->SetBaseValue(NewValue);
-        Data->SetCurrentValue(Data->GetCurrentValue() + Delta);
-    }
+	FGameplayAttributeData* Data = GetAttributeData(Attribute);
+	
+	if (Data) 
+	{
+		const float OldCurrentValue = Data->GetCurrentValue();
+		
+		const float Delta = NewValue - Data->GetBaseValue();
+		
+		Data->SetBaseValue(NewValue);
+		
+		Data->SetCurrentValue(OldCurrentValue + Delta);
+		
+		PostAttributeChange(Attribute, Data->GetCurrentValue(), OldCurrentValue);
+		
+		BroadcastAttributeChanges(Attribute, Data->GetCurrentValue(), OldCurrentValue);
+	}
 }
 
 void UGameplayAttributeSet::InitNumericValue(const FGameplayAttribute& Attribute, float NewValue)
@@ -103,4 +119,17 @@ const FGameplayAttributeData* UGameplayAttributeSet::GetAttributeData(const FGam
 		}
 	}
 	return nullptr;
+}
+
+void UGameplayAttributeSet::BroadcastAttributeChanges(const FGameplayAttribute& Attribute, float NewValue, float OldValue)
+{
+	if (FMath::IsNearlyEqual(NewValue, OldValue))
+	{
+		return;
+	}
+
+	if (OwningActionComponent.Get())
+	{
+		OwningActionComponent->OnAttributeChanged.Broadcast(Attribute, NewValue, OldValue);
+	}
 }

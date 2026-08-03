@@ -7,7 +7,7 @@
 #include "AssetToolsModule.h"
 #include "ContentBrowserMenuContexts.h"
 #include "ContentBrowserModule.h"
-#include "Blueprints/GameplayEffectBlueprint.h"
+#include "Blueprints/GameplayActionEffectBlueprint.h"
 #include "GameplayActionFrameworkFactories.h"
 #include "IContentBrowserSingleton.h"
 #include "Blueprint/BlueprintSupport.h"
@@ -27,7 +27,7 @@ FLinearColor UAssetDefinition_GameplayEffect::GetAssetColor() const
 
 TSoftClassPtr<UObject> UAssetDefinition_GameplayEffect::GetAssetClass() const
 {
-	return UGameplayEffectBlueprint::StaticClass();
+	return UGameplayActionEffectBlueprint::StaticClass();
 }
 
 TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayEffect::GetAssetCategories() const
@@ -95,14 +95,14 @@ namespace MenuExtension_GameplayEffect
 		{
 			FToolMenuOwnerScoped OwnerScoped(UE_MODULE_NAME);
 
-			UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayEffectBlueprint::StaticClass());
+			UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayActionEffectBlueprint::StaticClass());
 
 			FToolMenuSection& Section = Menu->FindOrAddSection("GetAssetActions");
 			Section.AddDynamicEntry(NAME_None, FNewToolMenuSectionDelegate::CreateLambda([](FToolMenuSection& InSection)
 			{
 				if (const UContentBrowserAssetContextMenuContext* Context = UContentBrowserAssetContextMenuContext::FindContextWithAssets(InSection))
 				{
-					if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayEffectBlueprint::StaticClass()))
+					if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayActionEffectBlueprint::StaticClass()))
 					{
 						const TAttribute<FText> Label = LOCTEXT("GameplayEffect_NewDerivedBlueprint", "Create Child Effect");
 						const TAttribute<FText> ToolTip = LOCTEXT("GameplayEffect_NewDerivedBlueprintTooltip", "Creates a Child Gameplay Effect Blueprint based on the current one.");

@@ -83,12 +83,14 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 
 **Tags** — effects can grant tags on application, require tags on the target (`ApplicationRequiredTags`), or be blocked by tags on the target (`ApplicationBlockedTags`). Tags now use a stackable container with reference counting — `AddOwnedGameplayTags` / `RemoveOwnedGameplayTags` accept a `Quantity` parameter, and `GetOwnedGameplayTagCount(Tag)` returns the current stack count.
 
+**Component delegates** — the component exposes Blueprint-assignable events: `OnActionActivated`, `OnActionEnded`, `OnEffectAdded`, `OnEffectRemoved`, `OnAttributeChanged`, `OnGameplayTagsAdded`, `OnGameplayTagsRemoved`.
+
 ### Cost and Cooldown
 
 Actions can optionally define:
 
-- **Cost effect** (`CostEffect`) — applied before activation. `CanApplyCost` checks if the cost would bring any attribute below 0. Override `OnExecuteAction` and call `CommitCost()` manually to enforce it.
-- **Cooldown effect** (`CooldownEffect`) — applied when the action ends. `RequestExecuteAction` checks `HasActiveEffect(CooldownEffect)` and blocks activation if the cooldown is still active.
+- **Cost effect** (`CostEffect`) — applied before activation. `CanApplyCost` checks if the cost would bring any attribute below 0. Override `OnExecuteAction` and call `CommitCost(CostLevel = 1)` manually to enforce it.
+- **Cooldown effect** (`CooldownEffect`) — applied when the action ends. `RequestExecuteAction` checks `HasActiveEffect(CooldownEffect)` and blocks activation if the cooldown is still active. `CommitCooldown(CooldownLevel = 1)` applies it at the given level.
 
 Both are regular `UGameplayEffect` assets — use Instant duration with Additive modifiers on the relevant attributes.
 
@@ -107,7 +109,9 @@ BaseValue is the persistent value; CurrentValue is the runtime value (modified b
 
 Callbacks:
 - `PreAttributeChange(Attribute, NewValue)` → returns `float` — called before a set; return the clamped value
-- `PostAttributeChange(Attribute, NewValue, OldValue)` — called after a set
+- `PostAttributeChange(Attribute, NewValue, OldValue)` — called after a set (also fired by `SetBaseValue` when the current value shifts)
+
+The component broadcasts `OnAttributeChanged(Attribute, NewValue, OldValue)` whenever a value actually changes — from both `SetNumericValue` (effect modifiers, `SetAttributeValue`) and `SetBaseValue` (current value shifts by the base delta). It only fires on real changes (near-equal values are skipped), so Blueprints can react to attribute updates without polling.
 
 ### Magnitude Calculation
 
@@ -160,6 +164,28 @@ void UMyExecution::Execute_Implementation(
 | `ApplyGameplayEffectSpecToActor` | Applies an effect spec to an actor |
 | `ApplyGameplayEffectToActor(Effect, Level=1)` | Applies an effect class to an actor with optional level |
 
+### Gameplay Action Tasks
+
+Tasks are lightweight `UGameplayTask`-based helpers that run on the owning `UGameplayActionComponent`. They let Blueprints wait for gameplay events or drive movement/montages without manual bookkeeping. Each task is created by a static factory that takes a `WorldContextObject` (either a `UGameplayAction` or any actor that implements `IGameplayActionInterface`); bind the output delegates and the task handles its own lifecycle and cleanup (unbind, root-motion removal, montage stop).
+
+| Task | Purpose |
+|------|---------|
+| `WaitAttributeChanged(Attribute, bOnlyTriggerOnce)` | Fires `OnAttributeChanged` whenever the watched attribute's value changes on the component |
+| `WaitGameplayTagAdded(Tag, bExactTag, bOnlyTriggerOnce)` | Fires `OnTagAdded` when a matching tag is added |
+| `WaitGameplayTagRemoved(Tag, bExactTag, bOnlyTriggerOnce)` | Fires `OnTagRemoved` when a matching tag is removed |
+| `PlayMontageAndWaitNotify(InMesh, Montage, PlayRate, StartSection, StartTimeSeconds, bStopMontageAtEnd)` | Plays a montage and fires `OnCompleted` / `OnBlendedOut` / `OnInterrupted` / `OnCancelled`, plus `OnNotifyBegin` / `OnNotifyEnd` for Branching Point notifies |
+| `MoveConstant(Direction, Speed, Duration, SpeedOverTime)` | Moves an Actor at a constant velocity for a fixed duration |
+| `MoveToLocation(TargetLocation, Duration, EasingCurve)` | Moves an Actor to a world location over time |
+| `RootMoveConstant(RootTaskName, Direction, Speed, Duration, ...)` | Applies constant-velocity root motion to a Character |
+| `RootMoveToLocation(RootTaskName, TargetLocation, Duration, PathOffsetCurve, ...)` | Moves a Character to a world location via root motion |
+
+Notes:
+
+- Movement tasks come in Actor and Root (Character) flavours — use Actor variants on plain `AActor` and Root variants on `ACharacter`, not the other way around (see class docs).
+- Movement tasks broadcast `OnMovementFinished` on success and `OnMovementInterrupted` if destroyed before completing.
+- Tag tasks fire once per matching tag inside a single added/removed container broadcast; `bOnlyTriggerOnce` ends the task after the first broadcast that contains a match (even if several tags matched).
+- Root tasks accept root-motion settings (`RootMotionMode`, `RootMotionFinishVelocityMode`, gravity) and remove the root-motion source on destroy.
+
 ### Cancel Policy
 
 `EGameplayActionCancelPolicy` controls behaviour when activation would cancel other running actions:
@@ -185,6 +211,7 @@ Tags involved:
 | `UGameplayEffectMagnitudeCalculation` | Custom magnitude calculation per modifier |
 | `UGameplayEffectExecutionCalculation` | Full control over effect application (replaces modifiers) |
 | `IGameplayActionInterface` | Interface for actors; exposes `GetGameplayActionComponent()` |
+| `UGameplayActionTask` | Base for Blueprint tasks running on the component — waiting for events, movement, and montage playback |
 | `UGameplayActionFrameworkDebugSubsystem` | World subsystem; renders debug info toggled by `DebugGAF` |
 
 ## Notes
@@ -207,4 +234,4 @@ Shows:
 - **Owned Tags** — all gameplay tags on the actor
 - **Attributes** — per attribute set: each attribute with `Base=` and `Current=`
 
-Implementation: `UGameplayActionFrameworkDebugSubsystem` registers a `FDebugDrawDelegate` via `UDebugDrawService::Register(TEXT("GAF"))`, toggled by a `TCustomShowFlag<GAF>` (also controllable via `ShowFlag.GAF`). `UGameplayActionComponent::DisplayDebug` renders the actual data.
+Implementation: `UGameplayActionFrameworkDebugSubsystem` registers a `FDebugDrawDelegate` via `UDebugDrawService::Register(TEXT("GAF"))`, toggled by the `TCustomShowFlag<GAF>` show flag (controllable via `ShowFlag.GAF`) and the `DebugGAF` console command. `UGameplayActionComponent::DisplayDebug` renders the actual data.

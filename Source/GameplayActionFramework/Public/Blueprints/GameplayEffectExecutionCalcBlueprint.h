@@ -5,15 +5,15 @@
 
 #include "CoreMinimal.h"
 #include "Engine/Blueprint.h"
-#include "GameplayEffectBlueprint.generated.h"
+#include "GameplayEffectExecutionCalcBlueprint.generated.h"
 
 UCLASS(BlueprintType)
-class GAMEPLAYACTIONFRAMEWORK_API UGameplayEffectBlueprint : public UBlueprint
+class GAMEPLAYACTIONFRAMEWORK_API UGameplayEffectExecutionCalcBlueprint : public UBlueprint
 {
 	GENERATED_BODY()
 
 public:
-	UGameplayEffectBlueprint(const FObjectInitializer& ObjectInitializer);
+	UGameplayEffectExecutionCalcBlueprint(const FObjectInitializer& ObjectInitializer);
 
 #if WITH_EDITOR
 	virtual bool SupportedByDefaultBlueprintFactory() const override { return false; }

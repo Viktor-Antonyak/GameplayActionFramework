@@ -20,7 +20,7 @@ TSharedRef<IPropertyTypeCustomization> FGameplayAttributeCustomization::MakeInst
 
 void FGameplayAttributeCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> StructPropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
-	// Get the handle to the "Attribute" property inside FGameplayAttribute
+	CachedStructPropertyHandle = StructPropertyHandle;
 	AttributePropertyHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FGameplayAttribute, Attribute));
 
 	if (!AttributePropertyHandle.IsValid())
@@ -92,21 +92,16 @@ void FGameplayAttributeCustomization::CustomizeChildren(TSharedRef<IPropertyHand
 
 void FGameplayAttributeCustomization::OnAttributeSelected(TSharedPtr<FAttributeItem> SelectedItem, ESelectInfo::Type SelectInfo)
 {
-	if (SelectedItem.IsValid() && AttributePropertyHandle.IsValid())
+	if (SelectedItem.IsValid() && CachedStructPropertyHandle.IsValid())
 	{
-		if (SelectedItem->Property)
-		{
-			// Setting TFieldPath via string "ClassPath:PropertyName"
-			FString ValueString = FString::Printf(TEXT("%s:%s"), 
-				*SelectedItem->Property->GetOwner<UObject>()->GetPathName(), 
-				*SelectedItem->Property->GetName());
-			
-			AttributePropertyHandle->SetValueFromFormattedString(ValueString);
-		}
-		else
-		{
-			AttributePropertyHandle->SetValueFromFormattedString(TEXT("None"));
-		}
+		FGameplayAttribute NewAttributeStruct = SelectedItem->Property 
+			? FGameplayAttribute(SelectedItem->Property) 
+			: FGameplayAttribute();
+
+		FString ValueString;
+		FGameplayAttribute::StaticStruct()->ExportText(ValueString, &NewAttributeStruct, &NewAttributeStruct, nullptr, EPropertyPortFlags::PPF_SerializedAsImportText, nullptr);
+
+		CachedStructPropertyHandle->SetValueFromFormattedString(ValueString);
 	}
 }
 
