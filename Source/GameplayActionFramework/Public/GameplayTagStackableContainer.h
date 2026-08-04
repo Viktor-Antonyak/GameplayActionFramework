@@ -44,7 +44,7 @@ public:
 	{
 		if (!Tags.IsValid())
 		{
-			return true;
+			return false;
 		}
 		
 		bool bHasAny = false;
