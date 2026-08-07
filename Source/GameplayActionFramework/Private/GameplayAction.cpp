@@ -5,7 +5,6 @@
 #include "GameFramework/Actor.h"
 #include "GameplayActionComponent.h"
 #include "GameplayEffect.h"
-#include "GameplayActionTasks/GameplayActionTask.h"
 
 DEFINE_LOG_CATEGORY(LogGameplayAction);
 
@@ -28,6 +27,8 @@ void UGameplayAction::InitializeAction(const TSharedPtr<FGameplayActionActorInfo
 			}
 		}
 	}
+	
+	OnActionInitialize();
 }
 
 void UGameplayAction::DeinitializeAction()
@@ -35,6 +36,8 @@ void UGameplayAction::DeinitializeAction()
 	CachedActorInfo.Reset();
 	CachedActionLevel = -1;
 	MeshComponents.Empty();
+	
+	OnActionDeinitialize();
 }
 
 bool UGameplayAction::RequestExecuteAction()
@@ -150,6 +153,14 @@ UWorld* UGameplayAction::GetWorld() const
 	return nullptr;
 }
 
+void UGameplayAction::OnActionInitialize_Implementation()
+{
+}
+
+void UGameplayAction::OnActionDeinitialize_Implementation()
+{
+}
+
 // Start of IGameplayTaskOwnerInterface
 UGameplayTasksComponent* UGameplayAction::GetGameplayTasksComponent(const UGameplayTask& Task) const
 {
@@ -257,11 +268,6 @@ bool UGameplayAction::CommitCooldown(int32 CooldownLevel)
     return ActionComponent->ApplyGameplayEffectToSelf(CooldownEffect, CooldownLevel).IsValid();
 }
 
-TArray<USkeletalMeshComponent*> UGameplayAction::GetSkeletalMeshComponents() const
-{
-	return MeshComponents;
-}
-
 bool UGameplayAction::CanCancelAllActions() const 
 {
     bool bCanceledAllActions = true;
@@ -363,9 +369,13 @@ bool UGameplayAction::CanApplyCost() const
 
 void UGameplayAction::EndAllGameplayTasks()
 {
-	for (UGameplayTask* Task : GameplayTasks)
+	const TArray<UGameplayTask*> TasksCopy = GameplayTasks;
+	for (UGameplayTask* Task : TasksCopy)
 	{
-		Task->EndTask();
+		if (IsValid(Task))
+		{
+			Task->EndTask();
+		}
 	}
 }
 

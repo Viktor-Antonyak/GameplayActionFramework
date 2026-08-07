@@ -92,8 +92,21 @@ void UGameplayActionFrameworkDebugSubsystem::OnDebugDraw(UCanvas* Canvas, APlaye
 				if (UGameplayActionComponent* GAC = HitActor->FindComponentByClass<UGameplayActionComponent>())
 				{
 					Canvas->SetDrawColor(FColor::White);
-					Canvas->DrawText(Font, FString::Printf(TEXT("--- %s ---"), *HitActor->GetName()), 4.f, YPos);
-					YPos += YL;
+
+					FString OwnerLine = FString::Printf(TEXT("--- %s ---"), *HitActor->GetName());
+					float LineWidth, LineHeight;
+					Canvas->TextSize(Font, OwnerLine, LineWidth, LineHeight);
+
+					FCanvasTileItem OwnerBackground(
+						FVector2D(4.f - 4.f, YPos - 2.f),
+						FVector2D(LineWidth + 16.f, YL),
+						FLinearColor(0.f, 0.f, 0.f, 0.2f)
+					);
+					OwnerBackground.BlendMode = SE_BLEND_Translucent;
+					Canvas->DrawItem(OwnerBackground);
+
+					Canvas->DrawText(Font, OwnerLine, 4.f, YPos);
+					YPos += YL + 2;
 
 					GAC->DisplayDebug(Canvas, YL, YPos);
 					return;
@@ -106,8 +119,21 @@ void UGameplayActionFrameworkDebugSubsystem::OnDebugDraw(UCanvas* Canvas, APlaye
 			if (UGameplayActionComponent* GAC = Pawn->FindComponentByClass<UGameplayActionComponent>())
 			{
 				Canvas->SetDrawColor(FColor::White);
-				Canvas->DrawText(Font, FString::Printf(TEXT("--- %s ---"), *Pawn->GetName()), 4.f, YPos);
-				YPos += YL;
+
+				FString OwnerLine = FString::Printf(TEXT("--- %s ---"), *Pawn->GetName());
+				float LineWidth, LineHeight;
+				Canvas->TextSize(Font, OwnerLine, LineWidth, LineHeight);
+
+				FCanvasTileItem OwnerBackground(
+					FVector2D(4.f - 4.f, YPos - 2.f),
+					FVector2D(LineWidth + 16.f, YL),
+					FLinearColor(0.f, 0.f, 0.f, 0.2f)
+				);
+				OwnerBackground.BlendMode = SE_BLEND_Translucent;
+				Canvas->DrawItem(OwnerBackground);
+
+				Canvas->DrawText(Font, OwnerLine, 4.f, YPos);
+				YPos += YL + 2;
 
 				GAC->DisplayDebug(Canvas, YL, YPos);
 			}

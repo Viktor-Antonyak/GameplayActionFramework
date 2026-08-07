@@ -148,7 +148,8 @@ bool UGameplayActionComponent::TryActivateActionsByTag(FGameplayTagContainer Act
 {
 	bool bActivatedAny = false;
 	
-	for (const FGameplayActionSpec& ActionSpec : AddedActions)
+	const TArray<FGameplayActionSpec> AddedActionsCopy = AddedActions;
+	for (const FGameplayActionSpec& ActionSpec : AddedActionsCopy)
 	{
 		if (IsValid(ActionSpec.Action) && ActionSpec.Action->GetActionTag().MatchesAny(ActionTags))
 		{
@@ -292,7 +293,7 @@ UGameplayAttributeSet* UGameplayActionComponent::GetAttributeSetByClass(TSubclas
 {
 	if (!AttributeClass) 
 	{
-	    UE_LOG(LogGameplayAction, Error, TEXT("GetAttributeSetByClass: AttributeClass is nullptr"));
+	    UE_LOG(LogGameplayActionComponent, Error, TEXT("GetAttributeSetByClass: AttributeClass is nullptr"));
 	    return nullptr;
 	}
 
@@ -317,7 +318,7 @@ float UGameplayActionComponent::GetAttributeValue(const FGameplayAttribute& Attr
 
 	if (AttributeSet == nullptr)
 	{
-		UE_LOG(LogGameplayAction, Error, TEXT("GetAttributeValue: AttributeSet is nullptr"));
+		UE_LOG(LogGameplayActionComponent, Error, TEXT("GetAttributeValue: AttributeSet is nullptr"));
 		return 0.0f;
 	}
 	
@@ -328,7 +329,7 @@ float UGameplayActionComponent::GetAttributeBaseValue(const FGameplayAttribute& 
 {
     if (!Attribute.IsValid())
 	{
-		UE_LOG(LogGameplayAction, Error, TEXT("GetAttributeBaseValue: Attribute is invalid"));
+		UE_LOG(LogGameplayActionComponent, Error, TEXT("GetAttributeBaseValue: Attribute is invalid"));
 		return 0.0f;
 	}
    
@@ -346,7 +347,7 @@ void UGameplayActionComponent::SetAttributeValue(const FGameplayAttribute& Attri
 {
 	if (!Attribute.IsValid())
 	{
-		UE_LOG(LogGameplayAction, Error, TEXT("SetAttributeValue: Attribute is invalid"));
+		UE_LOG(LogGameplayActionComponent, Error, TEXT("SetAttributeValue: Attribute is invalid"));
 		return;
 	}
 
@@ -382,7 +383,7 @@ void UGameplayActionComponent::InitActorInfo()
 
 	if (!GetOwner())
 	{
-		UE_LOG(LogGameplayAction, Error, TEXT("InitActorInfo: GetOwner() is nullptr"));
+		UE_LOG(LogGameplayActionComponent, Error, TEXT("InitActorInfo: GetOwner() is nullptr"));
 		return;
 	}
 	
@@ -443,7 +444,7 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
 {
     if (!Spec.Effect) 
     {
-        UE_LOG(LogGameplayAction, Error, TEXT("ApplyGameplayEffectSpecToSelf: Spec.Effect is nullptr"));
+        UE_LOG(LogGameplayActionComponent, Error, TEXT("ApplyGameplayEffectSpecToSelf: Spec.Effect is nullptr"));
         return FActiveGameplayEffectHandle();
     }
 
@@ -456,11 +457,25 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
         return FActiveGameplayEffectHandle();
     }
     
-    FActiveGameplayEffectHandle ExistingHandle = FindStackableEffect(Spec);
+    FActiveGameplayEffectHandle ExistingHandle = ActiveEffects.FindStackable(Spec.Effect, Spec.SourceActor.Get());
 
     if (ExistingHandle.IsValid()) 
     {
-        return ExistingHandle;
+    	FActiveGameplayEffect* ExistingEffect = ActiveEffects.Find(ExistingHandle);
+    	if (ExistingEffect)
+    	{
+    		if (ExistingEffect->StackCount >= Spec.Effect->StackLimitCount)
+    		{
+    			return ExistingHandle;
+    		}
+
+    		ExistingEffect->StackCount++;
+    		ExistingEffect->Spec = Spec;
+
+    		ApplyEffectModifiers(*ExistingEffect);
+
+    		return ExistingHandle;
+    	}
     }
 
     FActiveGameplayEffect ActiveGE;
@@ -470,72 +485,7 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
     ActiveGE.Duration = Spec.Effect->DurationPolicy == EGameplayEffectDuration::HasDuration ? Spec.Effect->DurationMagnitude : -1.f;
     ActiveGE.StackCount = 1;
 
-    if (Spec.Effect->DurationPolicy != EGameplayEffectDuration::Instant && Spec.Effect->Period <= 0.0f) 
-    {
-        for (const FGameplayModifierInfo& ModInfo : Spec.Effect->Modifiers)
-        {
-            if (ModInfo.Attribute.IsValid())
-            {
-                const float BaseValue = GetAttributeBaseValue(ModInfo.Attribute);
-                
-                ActiveGE.PreApplyBaseValues.Add(ModInfo.Attribute, BaseValue);
-            }
-        }
-    }
-
-    for (const FGameplayModifierInfo& ModInfo : Spec.Effect->Modifiers)
-    {
-        if (!ModInfo.Attribute.IsValid()) 
-        {
-            continue;
-        }
-
-        float FinalMagnitude = ModInfo.Magnitude;
-        
-        if (IsValid(ModInfo.MagnitudeCalculation))
-        {
-            UGameplayEffectMagnitudeCalculation* CalcCDO = ModInfo.MagnitudeCalculation->GetDefaultObject<UGameplayEffectMagnitudeCalculation>();
-            FinalMagnitude = CalcCDO->CalculateMagnitude(Spec, this);
-        }
-        else if (ModInfo.DataTag.IsValid() && Spec.SetByCallerMagnitudes.Contains(ModInfo.DataTag))
-        {
-            FinalMagnitude = Spec.GetSetByCallerMagnitude(ModInfo.DataTag);
-        }
-
-        const float CurrentValue = GetAttributeValue(ModInfo.Attribute);
-        float NewValue = CurrentValue;
-
-        switch (ModInfo.ModifierOp) 
-        {
-            case EGameplayModOp::Additive:
-                NewValue += FinalMagnitude;
-                break;
-
-            case EGameplayModOp::Multiplicative:
-                NewValue *= FinalMagnitude;
-                break;
-
-            case EGameplayModOp::Override:
-                NewValue = FinalMagnitude;
-                break;
-        }
-
-        UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(ModInfo.Attribute.GetAttributeSetClass());
-
-        if (!AttributeSet)
-        {
-            continue;
-        }
-
-        if (Spec.Effect->DurationPolicy == EGameplayEffectDuration::Instant || Spec.Effect->Period > 0.0f) 
-        {
-            AttributeSet->SetNumericValue(ModInfo.Attribute, NewValue);
-        }
-        else 
-        {
-            AttributeSet->SetBaseValue(ModInfo.Attribute, NewValue);
-        }
-    }
+    ApplyEffectModifiers(ActiveGE);
 
     if (Spec.Effect->ExecutionCalculation)
     {
@@ -554,28 +504,26 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
 	
 	OnEffectAdded.Broadcast(Spec.Effect->GetClass());
 
-    if (Spec.Effect->DurationPolicy == EGameplayEffectDuration::HasDuration && Spec.Effect->DurationMagnitude > 0.f)
-    {
-        FTimerDelegate Delegate = FTimerDelegate::CreateUObject(this, &UGameplayActionComponent::OnEffectExpired, ActiveGE.Handle);
-        
-        GetWorld()->GetTimerManager().SetTimer(ActiveGE.DurationHandle, Delegate, Spec.Effect->DurationMagnitude, false);
-    }
+	if (Spec.Effect->DurationPolicy == EGameplayEffectDuration::HasDuration && Spec.Effect->DurationMagnitude > 0.f)
+	{
+		FTimerDelegate Delegate = FTimerDelegate::CreateUObject(this, &UGameplayActionComponent::OnEffectExpired, ActiveGE.Handle);
+		GetWorld()->GetTimerManager().SetTimer(ActiveGE.DurationHandle, Delegate, Spec.Effect->DurationMagnitude, false);
+	}
 
-    if (Spec.Effect->Period > 0.f) 
-    {
-        FTimerDelegate Delegate = FTimerDelegate::CreateUObject(this, &UGameplayActionComponent::ExecutePeriodicEffect, ActiveGE.Handle);
+	if (Spec.Effect->Period > 0.f) 
+	{
+		FTimerDelegate Delegate = FTimerDelegate::CreateUObject(this, &UGameplayActionComponent::ExecutePeriodicEffect, ActiveGE.Handle);
+		if (Spec.Effect->bExecutePeriodicOnApplication) 
+		{
+			GetWorld()->GetTimerManager().SetTimerForNextTick(Delegate);
+		}
+		GetWorld()->GetTimerManager().SetTimer(ActiveGE.PeriodTimerHandle, Delegate, Spec.Effect->Period, true);
+	}
 
-        if (Spec.Effect->bExecutePeriodicOnApplication) 
-        {
-            GetWorld()->GetTimerManager().SetTimerForNextTick(Delegate);
-        }
-        GetWorld()->GetTimerManager().SetTimer(ActiveGE.PeriodTimerHandle, Delegate, Spec.Effect->Period, true);
-    }
-
-    return ActiveGE.Handle;
+	return ActiveGE.Handle;
 }
 
-FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, int32 Level)
+FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, int32 Level, AActor* SourceActor)
 {
     if (!IsValid(Effect))
     {
@@ -586,98 +534,191 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectToSelf(
  
     if (!IsValid(EffectCDO))
     {
-        UE_LOG(LogGameplayAction, Error, TEXT("ApplyGameplayEffectToSelf: EffectCDO is nullptr"));
+        UE_LOG(LogGameplayActionComponent, Error, TEXT("ApplyGameplayEffectToSelf: EffectCDO is nullptr"));
         return FActiveGameplayEffectHandle();
     }
  
     FGameplayEffectSpec Spec;
     Spec.Effect = EffectCDO;
 	Spec.Level = Level;
+	Spec.SourceActor = SourceActor;
  
     return ApplyGameplayEffectSpecToSelf(Spec);
 }
 
 bool UGameplayActionComponent::RemoveActiveGameplayEffect(const FActiveGameplayEffectHandle& Handle)
 {
-    for (int32 Index = 0; Index < ActiveEffects.Num(); ++Index)
-    {
-        FActiveGameplayEffect& Effect = ActiveEffects[Index];
+	FActiveGameplayEffect* Effect = ActiveEffects.Find(Handle);
+	
+	if (!Effect)
+	{
+		return false;
+	}
 
-        if (Effect.Handle == Handle) 
-        {
-            if (Effect.DurationHandle.IsValid())
-            {
-                GetWorld()->GetTimerManager().ClearTimer(Effect.DurationHandle);
-            }
+	if (Effect->DurationHandle.IsValid())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(Effect->DurationHandle);
+	}
+	if (Effect->PeriodTimerHandle.IsValid()) 
+	{
+		GetWorld()->GetTimerManager().ClearTimer(Effect->PeriodTimerHandle);
+	}
 
-            if (Effect.PeriodTimerHandle.IsValid()) 
-            {
-                GetWorld()->GetTimerManager().ClearTimer(Effect.PeriodTimerHandle);
-            }
+	RevertEffectModifiers(*Effect);
+	
+	RemoveOwnedGameplayTags(Effect->Spec.Effect->GrantedTags);
 
-            RevertEffectModifiers(Effect);
-            
-            RemoveOwnedGameplayTags(Effect.Spec.Effect->GrantedTags);
+	TSubclassOf<UGameplayEffect> EffectClass = Effect->Spec.Effect->GetClass();
 
-            ActiveEffects.RemoveAtSwap(Index);
-        	
-        	OnEffectRemoved.Broadcast(Effect.Spec.Effect->GetClass());
+	ActiveEffects.Remove(Handle);
 
-            return true;
-        }
-    }
+	OnEffectRemoved.Broadcast(EffectClass);
 
-    return false;
+	return true;
 }
 
 bool UGameplayActionComponent::HasActiveEffectSpecHandle(const FActiveGameplayEffectHandle& Spec)
 {
-    if (!Spec.IsValid()) 
-    {
-        return false;
-    }
-
-    const FActiveGameplayEffect* ActiveEffect = ActiveEffects.FindByPredicate([Spec](const FActiveGameplayEffect& Effect)
-    {
-        return Effect.Handle == Spec;
-    });
-
-    return ActiveEffect != nullptr;
+	return Spec.IsValid() && ActiveEffects.Find(Spec) != nullptr;
 }
 
 bool UGameplayActionComponent::HasActiveEffect(TSubclassOf<UGameplayEffect> EffectClass)
 {
-    if (!IsValid(EffectClass)) 
-    {
-        return false;
-    }
+	if (!IsValid(EffectClass)) 
+	{
+		return false;
+	}
+	
+	const UGameplayEffect* CDO = EffectClass->GetDefaultObject<UGameplayEffect>();
+	
+	if (!IsValid(CDO)) 
+	{
+		return false;
+	}
 
-    const UGameplayEffect* CDO = EffectClass->GetDefaultObject<UGameplayEffect>();
+	for (const TTuple<FActiveGameplayEffectHandle, FActiveGameplayEffect>& Pair : ActiveEffects.GetAll())
+	{
+		if (Pair.Value.Spec.Effect == CDO)
+		{
+			return true;
+		}
+	}
+	
+	return false;
+}
 
-    if (!IsValid(CDO)) 
-    {
-        return false;
-    }
+bool UGameplayActionComponent::SetEffectInhibited(const FActiveGameplayEffectHandle& Handle, bool bInhibited)
+{
+	FActiveGameplayEffect* Effect = ActiveEffects.Find(Handle);
+	
+	if (!Effect || Effect->bIsInhibited == bInhibited)
+	{
+		return false;
+	}
 
-    const FActiveGameplayEffect* ActiveEffect = ActiveEffects.FindByPredicate([CDO](const FActiveGameplayEffect& Effect)
-    {
-        return Effect.Spec.Effect == CDO;
-    });
+	if (Effect->Spec.Effect->DurationPolicy == EGameplayEffectDuration::Instant)
+	{
+		UE_LOG(LogGameplayActionComponent, Warning, TEXT("SetEffectInhibited: Cannot inhibit an Instant effect, it has no ongoing modifiers to toggle."));
+		
+		return false;
+	}
 
-    return ActiveEffect != nullptr;
+	Effect->bIsInhibited = bInhibited;
+
+	if (bInhibited)
+	{
+		RevertEffectModifiers(*Effect);
+	}
+	else
+	{
+		ApplyEffectModifiers(*Effect);
+	}
+
+	return true;
+}
+
+bool UGameplayActionComponent::IsEffectInhibited(const FActiveGameplayEffectHandle& Handle) const
+{
+	const FActiveGameplayEffect* Effect = ActiveEffects.Find(Handle);
+	return Effect ? Effect->bIsInhibited : false;
+}
+
+void UGameplayActionComponent::ApplyEffectModifiers(const FActiveGameplayEffect& Effect)
+{
+	const FGameplayEffectSpec& Spec = Effect.Spec;
+
+	for (const FGameplayModifierInfo& ModInfo : Spec.Effect->Modifiers)
+	{
+		if (!ModInfo.Attribute.IsValid())
+		{
+			continue;
+		}
+
+		float FinalMagnitude = ModInfo.Magnitude;
+
+		if (IsValid(ModInfo.MagnitudeCalculation))
+		{
+			
+			UGameplayEffectMagnitudeCalculation* CalcCDO = ModInfo.MagnitudeCalculation->GetDefaultObject<UGameplayEffectMagnitudeCalculation>();
+			FinalMagnitude = CalcCDO->CalculateMagnitude(Spec, this);
+		}
+		else if (ModInfo.DataTag.IsValid() && Spec.SetByCallerMagnitudes.Contains(ModInfo.DataTag))
+		{
+			FinalMagnitude = Spec.GetSetByCallerMagnitude(ModInfo.DataTag);
+		}
+
+		UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(ModInfo.Attribute.GetAttributeSetClass());
+		if (!AttributeSet)
+		{
+			continue;
+		}
+
+		if (Spec.Effect->DurationPolicy == EGameplayEffectDuration::Instant || Spec.Effect->Period > 0.0f)
+		{
+			const float CurrentValue = AttributeSet->GetBaseValue(ModInfo.Attribute);
+			
+			float NewValue = CurrentValue;
+
+			switch (ModInfo.ModifierOp)
+			{
+			case EGameplayModOp::Additive:      
+				NewValue += FinalMagnitude;
+				break;
+			
+			case EGameplayModOp::Multiplicative:
+				NewValue *= FinalMagnitude;
+				break;
+				
+			case EGameplayModOp::Override:
+				NewValue = FinalMagnitude;
+				break;
+			}
+
+			AttributeSet->SetBaseValue(ModInfo.Attribute, NewValue);
+		}
+		else
+		{
+			AttributeSet->ApplyModifier(ModInfo.Attribute, Effect.Handle, ModInfo.ModifierOp, FinalMagnitude);
+		}
+	}
 }
 
 void UGameplayActionComponent::RevertEffectModifiers(const FActiveGameplayEffect& Effect)
 {
-    for (const TPair<FGameplayAttribute, float>& Pair : Effect.PreApplyBaseValues)
-    {
-        UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(Pair.Key.GetAttributeSetClass());
+	for (const FGameplayModifierInfo& ModInfo : Effect.Spec.Effect->Modifiers)
+	{
+		if (!ModInfo.Attribute.IsValid())
+		{
+			continue;
+		}
 
-        if (AttributeSet)
-        {
-            AttributeSet->SetBaseValue(Pair.Key, Pair.Value);
-        }
-    }
+		UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(ModInfo.Attribute.GetAttributeSetClass());
+		
+		if (AttributeSet)
+		{
+			AttributeSet->RemoveModifiersFromSource(ModInfo.Attribute, Effect.Handle);
+		}
+	}
 }
 
 void UGameplayActionComponent::OnEffectExpired(FActiveGameplayEffectHandle Handle)
@@ -687,77 +728,14 @@ void UGameplayActionComponent::OnEffectExpired(FActiveGameplayEffectHandle Handl
 
 void UGameplayActionComponent::ExecutePeriodicEffect(FActiveGameplayEffectHandle Handle)
 {
-    for (const FActiveGameplayEffect& Effect : ActiveEffects)
-    {
-        if (Effect.Handle == Handle)
-        {
-            for (const FGameplayModifierInfo& ModInfo : Effect.Spec.Effect->Modifiers)
-            {
-                if (!ModInfo.Attribute.IsValid())
-                {
-                    continue;
-                }
-
-                float FinalMagnitude = ModInfo.Magnitude;
-
-                if (IsValid(ModInfo.MagnitudeCalculation))
-                {
-                    UGameplayEffectMagnitudeCalculation* CalcCDO = ModInfo.MagnitudeCalculation->GetDefaultObject<UGameplayEffectMagnitudeCalculation>();
-                    FinalMagnitude = CalcCDO->CalculateMagnitude(Effect.Spec, this);
-                }
-                else if (ModInfo.DataTag.IsValid() && Effect.Spec.SetByCallerMagnitudes.Contains(ModInfo.DataTag))
-                {
-                    FinalMagnitude = Effect.Spec.GetSetByCallerMagnitude(ModInfo.DataTag);
-                }
-
-                const float CurrentValue = GetAttributeValue(ModInfo.Attribute);
-
-                float NewValue = CurrentValue;
-
-                switch (ModInfo.ModifierOp)
-                {
-                    case EGameplayModOp::Additive:
-                        NewValue += FinalMagnitude;
-                        break;
-
-                    case EGameplayModOp::Multiplicative:
-                        NewValue *= FinalMagnitude;
-                        break;
-
-                    case EGameplayModOp::Override:
-                        NewValue = FinalMagnitude;
-                        break;
-                }
-
-                UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(ModInfo.Attribute.GetAttributeSetClass());
-
-                if (AttributeSet)
-                {
-                    AttributeSet->SetNumericValue(ModInfo.Attribute, NewValue);
-                }
-            }
-
-            break;
-        }
-    }
-}
-
-FActiveGameplayEffectHandle UGameplayActionComponent::FindStackableEffect(const FGameplayEffectSpec& Spec) const
-{
-    if (Spec.Effect->StackingPolicy == EGameplayEffectStacking::None)
-    {
-        return FActiveGameplayEffectHandle();
-    }
-
-    for (const FActiveGameplayEffect& Effect : ActiveEffects)
-    {
-        if (Effect.Spec.Effect == Spec.Effect)
-        {
-            return Effect.Handle;
-        }
-    }
-
-    return FActiveGameplayEffectHandle();
+	FActiveGameplayEffect* Effect = ActiveEffects.Find(Handle);
+	
+	if (!Effect || Effect->bIsInhibited)  
+	{
+		return;
+	
+	}
+	ApplyEffectModifiers(*Effect);
 }
 
 void UGameplayActionComponent::DisplayDebug(class UCanvas* Canvas, float& YL, float& YPos) const
@@ -770,53 +748,36 @@ void UGameplayActionComponent::DisplayDebug(class UCanvas* Canvas, float& YL, fl
     UFont* Font = GEngine->GetSmallFont();
     YL = Font->GetMaxCharHeight() + 2.f;
     const float XPos = 4.f;
+    const float StartYPos = YPos;
 
-    Canvas->SetDrawColor(FColor::White);
-    Canvas->DrawText(Font, TEXT("--- Grant Actions ---"), XPos, YPos);
-    YPos += YL;
+    TArray<TPair<FString, FColor>> Lines;
 
+    Lines.Add({TEXT("--- Grant Actions ---"), FColor::White});
     for (const FGameplayActionSpec& Spec : AddedActions)
     {
-        if (!Spec.IsValid())
+        if (Spec.IsValid())
         {
-            continue;
+            const FColor Color = Spec.Action->IsActive() ? FColor::Green : FColor::White;
+            Lines.Add({FString::Printf(TEXT("  %s"), *Spec.Action->GetClass()->GetName()), Color});
         }
-
-        const FColor Color = Spec.Action->IsActive() ? FColor::Green : FColor::White;
-        Canvas->SetDrawColor(Color);
-        Canvas->DrawText(Font, FString::Printf(TEXT("  %s"), *Spec.Action->GetClass()->GetName()), XPos + 8.f, YPos);
-        YPos += YL;
     }
 
-    Canvas->SetDrawColor(FColor::White);
-    Canvas->DrawText(Font, TEXT("--- Triggered Actions ---"), XPos, YPos);
-    YPos += YL;
-
+    Lines.Add({TEXT("--- Triggered Actions ---"), FColor::White});
     for (const UGameplayAction* Action : ActiveTriggeredActions)
     {
-        if (!IsValid(Action))
+        if (IsValid(Action))
         {
-            continue;
+            Lines.Add({FString::Printf(TEXT("  %s"), *Action->GetClass()->GetName()), FColor::Green});
         }
-
-        Canvas->SetDrawColor(FColor::Green);
-        Canvas->DrawText(Font, FString::Printf(TEXT("  %s"), *Action->GetClass()->GetName()), XPos + 8.f, YPos);
-        YPos += YL;
     }
 
-    Canvas->SetDrawColor(FColor::White);
-    Canvas->DrawText(Font, TEXT("--- Active Effects ---"), XPos, YPos);
-    YPos += YL;
-
-    for (const FActiveGameplayEffect& Effect : ActiveEffects)
+    Lines.Add({TEXT("--- Active Effects ---"), FColor::White});
+    for (const TTuple<FActiveGameplayEffectHandle, FActiveGameplayEffect>& Pair : ActiveEffects.GetAll())
     {
-        if (!Effect.Spec.Effect)
-        {
-            continue;
-        }
+        const FActiveGameplayEffect& Effect = Pair.Value;
+        if (!Effect.Spec.Effect) { continue; }
 
         FString Info = FString::Printf(TEXT("  %s [Stacks: %d]"), *Effect.Spec.Effect->GetName(), Effect.StackCount);
-
         if (Effect.Duration > 0.f)
         {
             const float TimeLeft = Effect.Duration - (GetWorld()->GetTimeSeconds() - Effect.StartTime);
@@ -827,48 +788,64 @@ void UGameplayActionComponent::DisplayDebug(class UCanvas* Canvas, float& YL, fl
             Info += TEXT(" (Infinite)");
         }
 
-        Canvas->DrawText(Font, Info, XPos + 8.f, YPos);
-        YPos += YL;
-    }
-
-    Canvas->SetDrawColor(FColor::White);
-    Canvas->DrawText(Font, TEXT("--- Owned Tags ---"), XPos, YPos);
-    YPos += YL;
-
-    if (GameplayTagContainer.IsValid())
-    {
-        Canvas->DrawText(Font, FString::Printf(TEXT("  %s"), *GameplayTagContainer.ToStringAggregated()), XPos + 8.f, YPos);
-        YPos += YL;
-    }
-
-    Canvas->SetDrawColor(FColor::White);
-    Canvas->DrawText(Font, TEXT("--- Attributes ---"), XPos, YPos);
-    YPos += YL;
-
-    for (const UGameplayAttributeSet* Set : AttributeSets)
-    {
-        if (!IsValid(Set))
+        if (Effect.bIsInhibited)
         {
-            continue;
+            Info += TEXT(" [INHIBITED]");
         }
 
-        Canvas->DrawText(Font, FString::Printf(TEXT("  [%s]"), *Set->GetClass()->GetName()), XPos + 8.f, YPos);
-        YPos += YL;
+        const FColor Color = Effect.bIsInhibited ? FColor::Silver : FColor::White;
+        Lines.Add({Info, Color});
+    }
+
+    Lines.Add({TEXT("--- Owned Tags ---"), FColor::White});
+    if (GameplayTagContainer.IsValid())
+    {
+        Lines.Add({FString::Printf(TEXT("  %s"), *GameplayTagContainer.ToStringAggregated()), FColor::White});
+    }
+
+    Lines.Add({TEXT("--- Attributes ---"), FColor::White});
+    for (const UGameplayAttributeSet* Set : AttributeSets)
+    {
+        if (!IsValid(Set)) { continue; }
+
+        Lines.Add({FString::Printf(TEXT("  [%s]"), *Set->GetClass()->GetName()), FColor::White});
 
         for (TFieldIterator<FProperty> It(Set->GetClass()); It; ++It)
         {
             const FStructProperty* StructProp = CastField<FStructProperty>(*It);
-            if (!StructProp || StructProp->Struct != FGameplayAttributeData::StaticStruct())
-            {
-                continue;
-            }
+            if (!StructProp || StructProp->Struct != FGameplayAttributeData::StaticStruct()) { continue; }
 
             const FGameplayAttributeData* Data = StructProp->ContainerPtrToValuePtr<FGameplayAttributeData>(const_cast<UGameplayAttributeSet*>(Set));
             if (Data)
             {
-                Canvas->DrawText(Font, FString::Printf(TEXT("    %s: Base=%.1f Current=%.1f"), *It->GetName(), Data->GetBaseValue(), Data->GetCurrentValue()), XPos + 16.f, YPos);
-                YPos += YL;
+                Lines.Add({FString::Printf(TEXT("    %s: Base=%.1f Current=%.1f"), *It->GetName(), Data->GetBaseValue(), Data->GetCurrentValue()), FColor::White});
             }
         }
+    }
+
+    float MaxWidth = 0.f;
+    for (const TPair<FString, FColor>& LinePair : Lines)
+    {
+        float LineWidth, LineHeight;
+        Canvas->TextSize(Font, LinePair.Key, LineWidth, LineHeight);
+        MaxWidth = FMath::Max(MaxWidth, LineWidth);
+    }
+
+    const float BackgroundWidth = MaxWidth + 16.f;
+    const float BackgroundHeight = Lines.Num() * YL + 8.f;
+
+    FCanvasTileItem BackgroundTile(
+        FVector2D(XPos - 4.f, StartYPos - 2.f),
+        FVector2D(BackgroundWidth, BackgroundHeight),
+        FLinearColor(0.f, 0.f, 0.f, 0.2f)
+    );
+    BackgroundTile.BlendMode = SE_BLEND_Translucent;
+    Canvas->DrawItem(BackgroundTile);
+
+    for (const TPair<FString, FColor>& LinePair : Lines)
+    {
+        Canvas->SetDrawColor(LinePair.Value);
+        Canvas->DrawText(Font, LinePair.Key, XPos + (LinePair.Key.StartsWith(TEXT("---")) ? 0.f : 8.f), YPos);
+        YPos += YL;
     }
 }

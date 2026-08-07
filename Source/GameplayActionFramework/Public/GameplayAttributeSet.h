@@ -5,6 +5,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/UnrealType.h"
+#include "GameplayAttributeAggregator.h"
 #include "GameplayAttributeSet.generated.h"
 
 DECLARE_LOG_CATEGORY_EXTERN(LogGameplayAttributeSet, Log, All);
@@ -22,6 +23,7 @@ struct FGameplayAttributeData
 	GENERATED_BODY()
 
 public:
+	
 	FGameplayAttributeData()
 		: BaseValue(0.f)
 		, CurrentValue(0.f)
@@ -39,6 +41,7 @@ public:
 	void SetCurrentValue(float NewValue) { CurrentValue = NewValue; }
 
 protected:
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attribute")
 	float BaseValue;
 
@@ -56,6 +59,7 @@ struct FGameplayAttribute
 	GENERATED_BODY()
 
 public:
+	
 	FGameplayAttribute() : Attribute(nullptr) {}
 	GAMEPLAYACTIONFRAMEWORK_API FGameplayAttribute(FProperty* InProperty);
 
@@ -91,6 +95,7 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayAttributeSet : public UObject
 	GENERATED_BODY()
 
 public:
+	
 	UGameplayAttributeSet();
 
 	/** Called by the owning component right after creation. Not meant to be called manually. */
@@ -100,6 +105,14 @@ public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Attributes")
 	float PreAttributeChange(const FGameplayAttribute& Attribute, float NewValue);
 	virtual float PreAttributeChange_Implementation(const FGameplayAttribute& Attribute, float NewValue)
+	{
+		return NewValue;
+	}
+	
+	/** Called just before an attribute's BASE value is changed (e.g. from Instant/Duration effects). Return clamped value. */
+	UFUNCTION(BlueprintNativeEvent, Category = "Attributes")
+	float PreAttributeBaseChange(const FGameplayAttribute& Attribute, float NewValue);
+	virtual float PreAttributeBaseChange_Implementation(const FGameplayAttribute& Attribute, float NewValue)
 	{
 		return NewValue;
 	}
@@ -118,16 +131,27 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	float GetBaseValue(const FGameplayAttribute& Attribute) const;
 
-	/** Sets current numeric value, triggering Pre/PostAttributeChange */
+	/** Instant/periodic mutation - directly sets CurrentValue, bypassing the aggregator. */
 	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	void SetNumericValue(const FGameplayAttribute& Attribute, float NewValue);
 
+	/** Instant/periodic mutation - directly sets BaseValue, bypassing the aggregator. */
+	UFUNCTION(BlueprintCallable, Category = "Attributes")
 	void SetBaseValue(const FGameplayAttribute& Attribute, float NewValue);
 
 	/** Initializes base and current value without callbacks (usually for setup) */
 	void InitNumericValue(const FGameplayAttribute& Attribute, float NewValue);
+	
+	/** Registers a long-lived modifier contribution tied to a specific effect handle, and recalculates the attribute. */
+	void ApplyModifier(const FGameplayAttribute& Attribute, const FActiveGameplayEffectHandle& SourceHandle, EGameplayModOp Op, float Magnitude);
+	
+	/** Removes all modifier contributions from a specific effect handle, and recalculates the attribute. */
+	void RemoveModifiersFromSource(const FGameplayAttribute& Attribute, const FActiveGameplayEffectHandle& SourceHandle);
 
 protected:
+	
+	/** Recomputes CurrentValue for an attribute from BaseValue + all active aggregator modifiers, and broadcasts the change if it differs. */
+	void RecalculateAttribute(const FGameplayAttribute& Attribute);
 	
 	/** Internal helper to find the data struct for an attribute property */
 	FGameplayAttributeData* GetAttributeData(const FGameplayAttribute& Attribute);
@@ -135,6 +159,9 @@ protected:
 	
 	void BroadcastAttributeChanges(const FGameplayAttribute& Attribute, float NewValue, float OldValue);
 
+	UPROPERTY()
+	TMap<FGameplayAttribute, FGameplayAttributeAggregator> Aggregators;
+	
 	UPROPERTY()
 	TWeakObjectPtr<UGameplayActionComponent> OwningActionComponent;
 };

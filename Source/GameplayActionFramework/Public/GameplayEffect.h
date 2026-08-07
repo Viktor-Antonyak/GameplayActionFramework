@@ -6,10 +6,9 @@
 #include "CoreMinimal.h"
 #include "Engine/TimerHandle.h"
 #include "Engine/DataAsset.h"
-#include "GameplayAction.h"
 #include "GameplayTagContainer.h"
+#include "GameplayEffectTypes.h"
 #include "GameplayAttributeSet.h"
-
 #include "GameplayEffect.generated.h"
 
 class UGameplayEffectMagnitudeCalculation;
@@ -26,16 +25,6 @@ enum class EGameplayEffectDuration : uint8
     HasDuration
 };
 
-/**
- * Operations for Attributes
- */
-UENUM(BlueprintType)
-enum class EGameplayModOp : uint8
-{
-    Additive,
-    Multiplicative,
-    Override
-};
 
 UENUM(BlueprintType)
 enum class EGameplayEffectStacking : uint8
@@ -72,39 +61,31 @@ struct FGameplayEffectSpec
     GENERATED_BODY()
 
     UPROPERTY(BlueprintReadWrite)
-    const UGameplayEffect* Effect = nullptr;
+    const class UGameplayEffect* Effect = nullptr;
 
     UPROPERTY(BlueprintReadWrite)
     TMap<FGameplayTag, float> SetByCallerMagnitudes;
     
     UPROPERTY(BlueprintReadWrite)
     int32 Level = 1;
+    
+    /** The actor that caused/instigated this effect (e.g. the attacker). Used for AggregateBySource stacking
+     * and available to MagnitudeCalculation/ExecutionCalculation for source-relative logic. 
+     */
+    UPROPERTY(BlueprintReadWrite)
+    TWeakObjectPtr<AActor> SourceActor;
 
-    void SetSetByCallerMagnitude(FGameplayTag Tag, float Magnitude);
-
-    float GetSetByCallerMagnitude(FGameplayTag Tag) const;
-};
-
-USTRUCT(BlueprintType)
-struct FActiveGameplayEffectHandle
-{
-    GENERATED_BODY()
-
-    int32 Handle = -1;
-
-    bool IsValid() const
+    void SetSetByCallerMagnitude(FGameplayTag Tag, float Magnitude)
     {
-        return Handle > 0;
+        if (Tag.IsValid())
+        {
+            SetByCallerMagnitudes.FindOrAdd(Tag) = Magnitude;
+        }
     }
 
-    bool operator==(const FActiveGameplayEffectHandle& Other) const
+    float GetSetByCallerMagnitude(FGameplayTag Tag) const
     {
-        return Handle == Other.Handle;
-    }
-
-    bool operator!=(const FActiveGameplayEffectHandle& Other) const
-    {
-        return Handle != Other.Handle;
+        return SetByCallerMagnitudes.FindRef(Tag);
     }
 };
 
@@ -125,14 +106,16 @@ struct FActiveGameplayEffect
     UPROPERTY(BlueprintReadOnly)
     FActiveGameplayEffectHandle Handle;
 
-    TMap<FGameplayAttribute, float> PreApplyBaseValues;
-
     FTimerHandle DurationHandle;
 
     FTimerHandle PeriodTimerHandle;
 
     int32 StackCount = 1;
 
+    /** 
+     * Whether this effect's modifiers are currently suppressed via UGameplayActionComponent::SetEffectInhibited.
+     * Applies to the entire active effect (all stacks at once) — see SetEffectInhibited for details.
+     */
     bool bIsInhibited = false;
 };
 

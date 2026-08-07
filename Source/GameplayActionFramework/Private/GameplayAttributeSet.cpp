@@ -68,17 +68,11 @@ void UGameplayAttributeSet::SetBaseValue(const FGameplayAttribute& Attribute, fl
 	
 	if (Data) 
 	{
-		const float OldCurrentValue = Data->GetCurrentValue();
-		
-		const float Delta = NewValue - Data->GetBaseValue();
+		NewValue = PreAttributeBaseChange(Attribute, NewValue);
 		
 		Data->SetBaseValue(NewValue);
 		
-		Data->SetCurrentValue(OldCurrentValue + Delta);
-		
-		PostAttributeChange(Attribute, Data->GetCurrentValue(), OldCurrentValue);
-		
-		BroadcastAttributeChanges(Attribute, Data->GetCurrentValue(), OldCurrentValue);
+		RecalculateAttribute(Attribute);
 	}
 }
 
@@ -91,6 +85,64 @@ void UGameplayAttributeSet::InitNumericValue(const FGameplayAttribute& Attribute
 		Data->SetBaseValue(NewValue);
 		Data->SetCurrentValue(NewValue);
 	}
+}
+
+void UGameplayAttributeSet::ApplyModifier(const FGameplayAttribute& Attribute,
+	const FActiveGameplayEffectHandle& SourceHandle, EGameplayModOp Op, float Magnitude)
+{
+	if (!Attribute.IsValid() || !SourceHandle.IsValid())
+	{
+		return;
+	}
+
+	FGameplayAttributeAggregator& Aggregator = Aggregators.FindOrAdd(Attribute);
+	Aggregator.AddModifier(SourceHandle, Op, Magnitude);
+
+	RecalculateAttribute(Attribute);
+}
+
+void UGameplayAttributeSet::RemoveModifiersFromSource(const FGameplayAttribute& Attribute,
+	const FActiveGameplayEffectHandle& SourceHandle)
+{
+	FGameplayAttributeAggregator* Aggregator = Aggregators.Find(Attribute);
+	
+	if (!Aggregator)
+	{
+		return;
+	}
+
+	Aggregator->RemoveModifiersFromSource(SourceHandle);
+
+	if (Aggregator->IsEmpty())
+	{
+		Aggregators.Remove(Attribute);
+	}
+
+	RecalculateAttribute(Attribute);
+}
+
+void UGameplayAttributeSet::RecalculateAttribute(const FGameplayAttribute& Attribute)
+{
+	FGameplayAttributeData* Data = GetAttributeData(Attribute);
+	
+	if (!Data)
+	{
+		return;
+	}
+
+	const float OldValue = Data->GetCurrentValue();
+
+	const FGameplayAttributeAggregator* Aggregator = Aggregators.Find(Attribute);
+	
+	const float RawNewValue = Aggregator ? Aggregator->CalculateCurrentValue(Data->GetBaseValue()) : Data->GetBaseValue();
+
+	const float ClampedValue = PreAttributeChange(Attribute, RawNewValue);
+	
+	Data->SetCurrentValue(ClampedValue);
+
+	PostAttributeChange(Attribute, ClampedValue, OldValue);
+	
+	BroadcastAttributeChanges(Attribute, ClampedValue, OldValue);
 }
 
 FGameplayAttributeData* UGameplayAttributeSet::GetAttributeData(const FGameplayAttribute& Attribute)

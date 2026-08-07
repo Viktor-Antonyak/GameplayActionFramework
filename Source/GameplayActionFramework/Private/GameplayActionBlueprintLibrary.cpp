@@ -83,7 +83,7 @@ bool UGameplayActionBlueprintLibrary::NotEqualAttributeStruct(const FGameplayAtt
     return Attribute1 != Attribute2;
 }
 
-FGameplayEffectSpec UGameplayActionBlueprintLibrary::MakeGameplayEffectSpec(TSubclassOf<UGameplayEffect> Effect, int32 Level)
+FGameplayEffectSpec UGameplayActionBlueprintLibrary::MakeGameplayEffectSpec(TSubclassOf<UGameplayEffect> Effect, int32 Level, AActor* SourceActor)
 {
     if (!IsValid(Effect))
     {
@@ -100,6 +100,7 @@ FGameplayEffectSpec UGameplayActionBlueprintLibrary::MakeGameplayEffectSpec(TSub
     FGameplayEffectSpec Spec;
     Spec.Effect = EffectCDO;
 	Spec.Level = Level;
+	Spec.SourceActor = SourceActor;
 
     return Spec;
 }
@@ -132,7 +133,7 @@ FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffect
     return ActionComponent->ApplyGameplayEffectSpecToSelf(Spec);
 }
 
-FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffectToActor(AActor* Actor, TSubclassOf<UGameplayEffect> Effect, int32 Level)
+FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffectToActor(AActor* Actor, TSubclassOf<UGameplayEffect> Effect, int32 Level, AActor* SourceActor)
 {
    if (!IsValid(Actor) || !IsValid(Effect))
    {
@@ -146,5 +147,5 @@ FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffect
        return FActiveGameplayEffectHandle();
    }
 
-   return ActionComponent->ApplyGameplayEffectToSelf(Effect, Level);
+   return ActionComponent->ApplyGameplayEffectToSelf(Effect, Level, SourceActor);
 }

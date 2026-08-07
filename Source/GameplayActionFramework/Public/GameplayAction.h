@@ -4,12 +4,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "UObject/Object.h"
 #include "GameplayActionActorInfo.h"
 #include "GameplayActionInterface.h"
-#include "UObject/Object.h"
 #include "GameplayTagContainer.h"
-#include "Templates/SharedPointer.h"
-#include "Templates/SubclassOf.h"
 #include "GameplayTaskOwnerInterface.h"
 
 // InstancedStruct.h path differs across engine versions (StructUtils plugin vs engine-native).
@@ -63,22 +61,22 @@ struct FGameplayActionInfoTags
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Gameplay Action Tags")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Tags")
 	FGameplayTag GameplayActionTag;
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Gameplay Action Tags")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Tags")
 	FGameplayTagContainer BlockOtherActions;
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Gameplay Action Tags")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Tags")
 	FGameplayTagContainer CancelOtherActions;
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Gameplay Action Tags")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Tags")
 	FGameplayTagContainer RequireTags;
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Gameplay Action Tags")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Tags")
 	FGameplayTagContainer BlockedByTags;
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Gameplay Action Tags")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Tags")
 	FGameplayTagContainer GrantTags;
 };
 
@@ -99,13 +97,13 @@ public:
 	/** Deinitializes the action. */
 	virtual void DeinitializeAction();
 
-	UFUNCTION(BlueprintCallable, Category="Gameplay Action")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
 	bool IsActive() const 
 	{
 		return bIsActive;
 	}
 
-	UFUNCTION(BlueprintCallable, Category="Gameplay Action")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
 	bool CanBeCanceled() const 
 	{
 		return bCanBeCanceled;
@@ -153,11 +151,19 @@ public:
 protected:
 
 	virtual UWorld* GetWorld() const override;
+	
+	/** Fires after action initialization, can be used for custom data initialization */
+	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action", meta=(BlueprintInternalUseOnly, ForceAsFunction))
+	void OnActionInitialize();
 
-	UFUNCTION(BlueprintCallable, Category="Gameplay Action")
+	/** Fires after action deinitialization, must be used if action have custom initialization data */
+	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action", meta=(BlueprintInternalUseOnly, ForceAsFunction))
+	void OnActionDeinitialize();
+	
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
 	void EndAction();
 
-	UFUNCTION(BlueprintCallable, Category="Gameplay Action")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
 	void CancelAction();
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Cost")
@@ -166,75 +172,78 @@ protected:
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Cooldown")
 	bool CommitCooldown(int32 CooldownLevel = 1);
 
-	UFUNCTION(BlueprintCallable, Category="Gameplay Action")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
 	void SetCanBeCanceled(bool bNewCanBeCanceled) 
 	{
 		bCanBeCanceled = bNewCanBeCanceled;
 	}
 	
 	/** Called when the action is executed (Standard actions). */
-	UFUNCTION(BlueprintNativeEvent, Category="Gameplay Action")
+	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action")
 	void OnExecuteAction();
 
 	/** Event called when action is triggered with optional payload (Triggered actions). */
-	UFUNCTION(BlueprintNativeEvent, Category="Gameplay Action")
+	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action")
 	void OnActionTriggered(const FInstancedStruct& Payload);
 
 	/** Called when the action ends. */
-	UFUNCTION(BlueprintNativeEvent, Category="Gameplay Action")
+	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action")
 	void OnEndAction(bool bWasCanceled = false);
 
 	/** Overridable function to check if the action can be executed. */
-	UFUNCTION(BlueprintNativeEvent, Category="Gameplay Action")
+	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action")
 	bool CanExecuteAction() const;
 
-	UFUNCTION(BlueprintCallable, Category="Gameplay Action | Action Info")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Action Info")
 	int32 GetActionLevel() const 
 	{
 		return CachedActionLevel;
 	}
 
-	UFUNCTION(BlueprintCallable, Category="Gameplay Action | Action Info")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Action Info")
 	AActor* GetOwnerActor() const 
 	{
 		return CachedActorInfo ? CachedActorInfo->OwnerActor.Get() : nullptr;
 	}
 
-	UFUNCTION(BlueprintCallable, Category="Gameplay Action | Action Info")
-	TArray<USkeletalMeshComponent*> GetSkeletalMeshComponents() const;
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Action Info")
+	TArray<USkeletalMeshComponent*> GetSkeletalMeshComponents() const
+	{
+		return MeshComponents;
+	}
 
-	UFUNCTION(BlueprintCallable, Category="Gameplay Action | Action Info")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Action Info")
 	UMovementComponent* GetMovementComponent() const 
 	{ 
 		return CachedActorInfo ? CachedActorInfo->MovementComponent.Get() : nullptr; 
 	}
 	
-	UFUNCTION(BlueprintCallable, Category="Gameplay Action | Action Info")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Action Info")
 	UGameplayActionComponent* GetActionComponent() const 
 	{ 
 		return CachedActorInfo ? CachedActorInfo->ActionComponent.Get() : nullptr; 
 	}
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category="Gameplay Action Info", meta=(ShowOnlyInnerProperties))
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Info", meta=(ShowOnlyInnerProperties))
 	FGameplayActionInfoTags GameplayActionInfoTags;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Info")
 	EGameplayActionCancelPolicy CancelPolicy = EGameplayActionCancelPolicy::Block;
 
 	/** Type of this action. Standard actions are added via AddGameplayAction. Triggered are executed on the fly. */
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Action Type")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Action Type")
 	EGameplayActionType ActionType = EGameplayActionType::Default;
 
 	/** Input ID associated with the action (Standard actions only). */
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Input", meta=(EditCondition="ActionType == EGameplayActionType::Default"))
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Input", meta=(EditCondition="ActionType == EGameplayActionType::Default"))
 	int32 InputID;
 
 	/** Cooldown effect to apply when the action is executed. */
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Cooldown")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Cooldown")
 	TSubclassOf<UGameplayEffect> CooldownEffect;
 
 	/** Cost of the action. */
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category="Cost")
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Cost")
 	TSubclassOf<UGameplayEffect> CostEffect;
 
 private:

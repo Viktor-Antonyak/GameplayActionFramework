@@ -30,6 +30,9 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 
 - Unreal Engine 5.3+
 - `GameplayTags` and `GameplayTasks` engine modules
+- `StructUtils` plugin (for `FInstancedStruct`)
+
+> **Not compatible with Epic's built-in GameplayAbilities plugin.** Several reflected type names (`EGameplayModOp`, `FGameplayEffectSpec`, `FActiveGameplayEffectHandle`, `FGameplayAttribute`, etc.) collide with GAS at the UHT level, causing compile errors. Disable the `GameplayAbilities` plugin in your project if you want to use this framework.
 
 ## How It Works
 
@@ -56,19 +59,27 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 
 ### Gameplay Effects
 
-`UGameplayEffect` is a `UDataAsset` defining attribute modifications. Effects are applied via `ApplyGameplayEffectSpecToSelf` / `ApplyGameplayEffectToSelf`. Each `FGameplayEffectSpec` carries a `Level` (default 1) for level-scaled effects.
+`UGameplayEffect` is a `UDataAsset` defining attribute modifications. Effects are applied via `ApplyGameplayEffectSpecToSelf` / `ApplyGameplayEffectToSelf`. Each `FGameplayEffectSpec` carries a `Level` (default 1) for level-scaled effects and an optional `SourceActor` — the instigator (used for source-based stacking and available to Magnitude/Execution calculations). Pass it when applying via `MakeGameplayEffectSpec` / `ApplyGameplayEffectToActor` / `ApplyGameplayEffectToSelf`.
 
 **Duration** — controlled by `DurationPolicy`:
-- `Instant` — modifiers applied immediately, no timer, no revert
-- `HasDuration` — modifiers applied, `DurationMagnitude` seconds timer, `RevertEffectModifiers` on expiry
-- `Infinite` — modifiers applied, never expires (removed manually)
+- `Instant` — modifiers are evaluated once and applied **directly to the attribute's BaseValue** (additive/multiplicative/override on the base), no timer, no revert. Good for damage, healing, cost/cooldown.
+- `HasDuration` — modifiers are registered with the attribute **aggregator** (see below) for the effect's lifetime, then removed on expiry.
+- `Infinite` — same as `HasDuration` but never expires (removed manually).
 
-**Period** — if `Period > 0.0f`, modifiers are applied via `SetNumericValue` (CurrentValue only) on every tick — no BaseValue tracking, no revert on expiry.
+**Duration/Infinite modifiers and the aggregator** — instead of mutating a value in place, each active modifier is registered with a per-attribute `FGameplayAttributeAggregator`. The attribute's `CurrentValue` is recomputed as:
+
+```
+CurrentValue = (BaseValue + Sum(Additive)) * Product(Multiplicative)
+```
+
+or, if any `Override` modifier is active, `CurrentValue = <last Override>`. This means overlapping Duration/Infinite effects on the same attribute compose correctly and can be added/removed independently regardless of application order — there is no order-dependent in-place mutation and no "revert to saved base" step.
+
+**Period** — if `Period > 0.0f`, the modifiers are re-applied on every tick via `SetBaseValue` (applied against the current base each tick). Tick skipped while the effect is inhibited.
 
 **Modifier operations:**
-- `Additive` — `CurrentValue += Magnitude`
-- `Multiplicative` — `CurrentValue *= Magnitude`
-- `Override` — `CurrentValue = Magnitude`
+- `Additive` — Instant/Periodic: `BaseValue += Magnitude`; Duration/Infinite: added to the additive sum
+- `Multiplicative` — Instant/Periodic: `BaseValue *= Magnitude`; Duration/Infinite: multiplied into the product
+- `Override` — Instant/Periodic: `BaseValue = Magnitude`; Duration/Infinite: takes over the final value entirely
 
 **Execution Calculation** — runs after all modifiers. Useful for reading final attribute values and applying follow-up logic (e.g., read health after damage → apply bleed).
 
@@ -77,9 +88,15 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 2. `DataTag` — if a `SetByCaller` magnitude with matching tag exists in the spec
 3. `Magnitude` — raw float value
 
-**Stacking** — when `StackingPolicy != None`, applying an effect of the same class refreshes the existing effect instead of creating a new one. `StackLimitCount` caps the number of stacks. Supported policies:
-- `AggregateBySource` — stack per source
-- `AggregateByTarget` — stack per target
+**Stacking** — when `StackingPolicy != None`, applying an effect of the same class reuses the existing active effect and increments its `StackCount`, re-applying the effect's modifiers (each stack becomes its own aggregator contribution) until `StackLimitCount` is reached. Supported policies:
+- `AggregateBySource` — stack per `SourceActor` (two separate casters stack independently)
+- `AggregateByTarget` — stack per target (all sources share one stack)
+
+**Inhibition** — `SetEffectInhibited(Handle, bInhibited)` suppresses an active Duration/Infinite effect's contribution to attributes **without removing it**: its handle, duration timer, and stack count stay intact, and its modifiers are removed from (or re-added to) the attribute aggregator. Query state with `IsEffectInhibited(Handle)`. Notes:
+- Applies to the **entire** effect, all stacks at once — there is no per-stack inhibition.
+- Instant effects are rejected (they have no ongoing modifiers to toggle).
+- Periodic effects skip their tick while inhibited.
+- The framework only toggles on your signal — it's up to you to decide when (e.g. tag-driven conditions).
 
 **Tags** — effects can grant tags on application, require tags on the target (`ApplicationRequiredTags`), or be blocked by tags on the target (`ApplicationBlockedTags`). Tags now use a stackable container with reference counting — `AddOwnedGameplayTags` / `RemoveOwnedGameplayTags` accept a `Quantity` parameter, and `GetOwnedGameplayTagCount(Tag)` returns the current stack count.
 
@@ -105,13 +122,16 @@ UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attributes")
 FGameplayAttributeData Mana;
 ```
 
-BaseValue is the persistent value; CurrentValue is the runtime value (modified by effects). `SetBaseValue` automatically syncs CurrentValue. Effects modify CurrentValue; on expiry, the modifier is reverted from CurrentValue and BaseValue is unaffected.
+BaseValue is the persistent source of truth; CurrentValue is the runtime value. Duration/Infinite effects never touch BaseValue — they contribute through the aggregator and CurrentValue is recomputed from `BaseValue + modifiers`. Instant and Periodic effects mutate BaseValue directly (via `SetBaseValue`), and CurrentValue is recalculated after each change.
+
+> **Note on `FGameplayAttribute` parameters:** when you expose `FGameplayAttribute` in an async/`BlueprintInternalUseOnly`-style (Task, Latent) node signature, use a plain `FGameplayAttribute` parameter — **not** `const FGameplayAttribute&`. A `const` reference breaks the Blueprint attribute picker, so the selected value will not be correctly written. Use `FGameplayAttribute` (by value) so the PickAttribute dropdown works.
 
 Callbacks:
-- `PreAttributeChange(Attribute, NewValue)` → returns `float` — called before a set; return the clamped value
-- `PostAttributeChange(Attribute, NewValue, OldValue)` — called after a set (also fired by `SetBaseValue` when the current value shifts)
+- `PreAttributeChange(Attribute, NewValue)` → returns `float` — called before a current-value change; return the clamped value
+- `PostAttributeChange(Attribute, NewValue, OldValue)` — called after a current-value change
+- `PreAttributeBaseChange(Attribute, NewValue)` → returns `float` — called before a **BaseValue** change (Instant/Periodic effects); return the clamped value
 
-The component broadcasts `OnAttributeChanged(Attribute, NewValue, OldValue)` whenever a value actually changes — from both `SetNumericValue` (effect modifiers, `SetAttributeValue`) and `SetBaseValue` (current value shifts by the base delta). It only fires on real changes (near-equal values are skipped), so Blueprints can react to attribute updates without polling.
+The component broadcasts `OnAttributeChanged(Attribute, NewValue, OldValue)` whenever a value actually changes — whether from an aggregator recompute (Duration/Infinite effects, `SetAttributeValue`) or a `SetBaseValue` (Instant/Periodic effects). It only fires on real changes (near-equal values are skipped), so Blueprints can react to attribute updates without polling.
 
 ### Magnitude Calculation
 
@@ -159,10 +179,10 @@ void UMyExecution::Execute_Implementation(
 | `AddOwnedGameplayTagsToActor(Tags, Quantity=1)` | Adds tags to an actor with optional stack count |
 | `RemoveOwnedGameplayTagsFromActor(Tags, Quantity=1)` | Removes tags from an actor with optional stack count |
 | `GetAttributeValueFromActor` | Gets an attribute's current value |
-| `MakeGameplayEffectSpec(Effect, Level=1)` | Creates an effect spec from a class with optional level |
+| `MakeGameplayEffectSpec(Effect, Level=1, SourceActor=null)` | Creates an effect spec from a class with optional level and source |
 | `AddSetByCallerMagnitude` | Adds a set-by-caller magnitude to a spec |
 | `ApplyGameplayEffectSpecToActor` | Applies an effect spec to an actor |
-| `ApplyGameplayEffectToActor(Effect, Level=1)` | Applies an effect class to an actor with optional level |
+| `ApplyGameplayEffectToActor(Effect, Level=1, SourceActor=null)` | Applies an effect class to an actor with optional level and source |
 
 ### Gameplay Action Tasks
 
@@ -200,6 +220,15 @@ Tags involved:
 - `BlockedByTags` — target must not have any of these tags
 - `GrantTags` — applied to the target while the action is active
 
+### Action Lifecycle Events
+
+`UGameplayAction` exposes two `BlueprintImplementableEvent` hooks:
+
+- `OnActionInitialize` — fires after the action's spec is created (`InitializeAction`), once per instance
+- `OnActionDeinitialize` — fires on `DeinitializeAction` (e.g. component `EndPlay`), before the action is released
+
+These complement the native `InitializeAction` / `DeinitializeAction` overrides for Blueprint wiring.
+
 ## Structure
 
 | Class | Role |
@@ -207,6 +236,8 @@ Tags involved:
 | `UGameplayActionComponent` | Owned by the actor; manages actions, effects, tags (via `FGameplayTagStackableContainer`), and attributes |
 | `UGameplayAction` | Base for all actions — Default (reusable) or Triggered (one‑shot) |
 | `UGameplayEffect` | Data asset defining modifiers, duration, period, stacking, and tags |
+| `FActiveGameplayEffectsContainer` | Map of active effects by handle; owns stacking and inhibition lookups |
+| `FGameplayAttributeAggregator` | Per-attribute recomputation from BaseValue + active Duration/Infinite modifiers |
 | `UGameplayAttributeSet` | Container for `FGameplayAttributeData` properties |
 | `UGameplayEffectMagnitudeCalculation` | Custom magnitude calculation per modifier |
 | `UGameplayEffectExecutionCalculation` | Full control over effect application (replaces modifiers) |
@@ -216,7 +247,7 @@ Tags involved:
 
 ## Notes
 
-- All effect modifiers on periodic effects (`Period > 0`) operate on CurrentValue only — no BaseValue tracking, no revert on expiry.
+- Periodic effects (`Period > 0`) re-apply their modifiers to BaseValue on every tick; tick is skipped while the effect is inhibited.
 - Tags are reference-counted via `FGameplayTagStackableContainer`. Add/Remove accept a `Quantity` parameter; use `GetOwnedGameplayTagCount(Tag)` to query stack depth.
 - To inspect running effects, use `HasActiveEffect(Class)` or `HasActiveEffectSpecHandle(Handle)`.
 - Cost and cooldown effects are optional — if not set, no cost/cooldown is enforced.
@@ -230,8 +261,10 @@ Type `DebugGAF` in the console to toggle on‑screen debug info. The system perf
 Shows:
 - **Grant Actions** — list of registered actions; green = currently active, white = inactive
 - **Triggered Actions** — running one‑shot actions (always green)
-- **Active Effects** — effect name, stack count, remaining time (or "Infinite")
+- **Active Effects** — effect name, stack count, remaining time (or "Infinite"); inhibited effects shown in silver with an `[INHIBITED]` marker
 - **Owned Tags** — all gameplay tags on the actor
 - **Attributes** — per attribute set: each attribute with `Base=` and `Current=`
+
+The overlay is drawn with a translucent background panel for readability.
 
 Implementation: `UGameplayActionFrameworkDebugSubsystem` registers a `FDebugDrawDelegate` via `UDebugDrawService::Register(TEXT("GAF"))`, toggled by the `TCustomShowFlag<GAF>` show flag (controllable via `ShowFlag.GAF`) and the `DebugGAF` console command. `UGameplayActionComponent::DisplayDebug` renders the actual data.

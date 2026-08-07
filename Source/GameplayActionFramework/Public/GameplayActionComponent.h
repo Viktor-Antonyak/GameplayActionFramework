@@ -4,16 +4,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Delegates/DelegateCombinations.h"
 #include "GameplayEffect.h"
 #include "GameplayTagContainer.h"
 #include "GameplayActionActorInfo.h"
 #include "GameplayActionSpec.h"
 #include "GameplayAttributeSet.h"
-#include "Templates/SharedPointer.h"
-#include "Templates/SubclassOf.h"
 #include "GameplayTasksComponent.h"
 #include "GameplayTagStackableContainer.h"
+#include "ActiveGameplayEffectsContainer.h"
 
 // InstancedStruct.h path differs across engine versions (StructUtils plugin vs engine-native).
 // __has_include avoids hardcoding a specific version boundary, which the maintainer cannot
@@ -181,7 +179,7 @@ public:
 	FActiveGameplayEffectHandle ApplyGameplayEffectSpecToSelf(const FGameplayEffectSpec& Spec);
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
-	FActiveGameplayEffectHandle ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, int32 Level = 1);
+	FActiveGameplayEffectHandle ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, int32 Level = 1, AActor* SourceActor = nullptr);
 
 	/** Removes an active gameplay effect by its handle. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
@@ -194,6 +192,32 @@ public:
 	/** Returns whether the actor has an active gameplay effect class. */
 	UFUNCTION(BlueprintPure, Category = "Gameplay Effect")
 	bool HasActiveEffect(TSubclassOf<UGameplayEffect> EffectClass);
+	
+	/** 
+	 * Freezes/unfreezes an active effect's modifiers without removing it from the container.
+	 * While inhibited, the effect's contribution to attributes is removed, but its handle, duration timer,
+	 * and stack count remain intact.
+	 *
+	 * @note Inhibition applies to the ENTIRE active effect, including all of its stacks — there is no
+	 * partial inhibition of individual stacks within a stacked effect. If an effect has StackCount = 3,
+	 * inhibiting it removes the contribution of all 3 stacks at once; there's no way to inhibit e.g. only 1 of 3.
+	 *
+	 * @note Only affects effects that go through the attribute aggregator (Duration/Infinite policy).
+	 * Instant effects have no ongoing modifiers to toggle and will be rejected — see the Warning log.
+	 * Periodic effects (Period > 0) are separately checked in ExecutePeriodicEffect, which skips ticking
+	 * while bIsInhibited is true.
+	 *
+	 * The caller is responsible for deciding when to inhibit/un-inhibit (e.g. based on gameplay tags,
+	 * conditions, etc.) — the framework does not impose a trigger mechanism.
+	 *
+	 * @return false if the handle is invalid or already in the requested state.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
+	bool SetEffectInhibited(const FActiveGameplayEffectHandle& Handle, bool bInhibited);
+
+	/** Returns whether the given active effect is currently inhibited. */
+	UFUNCTION(BlueprintPure, Category = "Gameplay Effect")
+	bool IsEffectInhibited(const FActiveGameplayEffectHandle& Handle) const;
 
 	/** Draws debug info on canvas. */
 	void DisplayDebug(class UCanvas* Canvas, float& YL, float& YPos) const;
@@ -261,6 +285,8 @@ protected:
 	/** All active attribute sets managed by this component */
 	UPROPERTY(BlueprintReadOnly, Category="Gameplay Attributes")
 	TArray<UGameplayAttributeSet*> AttributeSets;
+	
+	void ApplyEffectModifiers(const FActiveGameplayEffect& Effect);
 
 	void RevertEffectModifiers(const FActiveGameplayEffect& Effect);
 
@@ -268,10 +294,8 @@ protected:
 
 	void ExecutePeriodicEffect(FActiveGameplayEffectHandle Handle);
 
-	FActiveGameplayEffectHandle FindStackableEffect(const FGameplayEffectSpec& Spec) const;
-
 	UPROPERTY()
-	TArray<FActiveGameplayEffect> ActiveEffects;
+	FActiveGameplayEffectsContainer ActiveEffects;
 
 	int32 NextEffectHandle = 1;
 
