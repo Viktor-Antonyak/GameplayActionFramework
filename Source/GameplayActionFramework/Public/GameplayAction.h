@@ -267,7 +267,8 @@ private:
 	bool CanApplyCost() const;
 	
 	void EndAllGameplayTasks();
-	
+
+	UPROPERTY()
 	TArray<TObjectPtr<UGameplayTask>> GameplayTasks;
 
 	UPROPERTY()
