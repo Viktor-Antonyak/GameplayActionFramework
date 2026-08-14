@@ -4,7 +4,7 @@
 #include "GameplayAction.h"
 #include "GameFramework/Actor.h"
 #include "GameplayActionComponent.h"
-#include "GameplayEffect.h"
+#include "GameplayActionFragment.h"
 
 DEFINE_LOG_CATEGORY(LogGameplayAction);
 
@@ -16,17 +16,6 @@ void UGameplayAction::InitializeAction(const TSharedPtr<FGameplayActionActorInfo
 {
 	CachedActorInfo = ActorInfo;
 	CachedActionLevel = ActionLevel;
-
-	if (CachedActorInfo.IsValid())
-	{
-		for (const TWeakObjectPtr<USkeletalMeshComponent>& SkeletalMeshComponent : CachedActorInfo->SkeletalMeshComponents)
-		{
-			if (SkeletalMeshComponent.IsValid())
-			{
-				MeshComponents.Add(SkeletalMeshComponent.Get());
-			}
-		}
-	}
 	
 	OnActionInitialize();
 }
@@ -35,7 +24,6 @@ void UGameplayAction::DeinitializeAction()
 {
 	CachedActorInfo.Reset();
 	CachedActionLevel = -1;
-	MeshComponents.Empty();
 	
 	OnActionDeinitialize();
 }
@@ -146,7 +134,7 @@ bool UGameplayAction::RequestCancelAction()
 
 UWorld* UGameplayAction::GetWorld() const
 {
-	if (CachedActorInfo.IsValid() && CachedActorInfo->OwnerActor.IsValid())
+	if (CachedActorInfo.IsValid() && CachedActorInfo->OwnerActor.IsValid() && !HasAnyFlags(RF_ClassDefaultObject))
 	{
 		return CachedActorInfo->OwnerActor->GetWorld();
 	}
@@ -200,13 +188,12 @@ void UGameplayAction::EndAction()
 	}
 
 	bIsActive = false;
+	
 	bCanBeCanceled = true;
 	
 	EndAllGameplayTasks();
 	
 	OnEndAction(false);
-	
-	GetActionComponent()->EndAllResourceConsumingTasksOwnedBy(*this);
 	
 	if (ActionType == EGameplayActionType::Default)
 	{
@@ -228,6 +215,7 @@ void UGameplayAction::CancelAction()
 	}
 	
 	bIsActive = false;
+	
 	bCanBeCanceled = true;
 	
 	EndAllGameplayTasks();
@@ -266,6 +254,24 @@ bool UGameplayAction::CommitCooldown(int32 CooldownLevel)
     }
 
     return ActionComponent->ApplyGameplayEffectToSelf(CooldownEffect, CooldownLevel).IsValid();
+}
+
+TArray<USkeletalMeshComponent*> UGameplayAction::GetSkeletalMeshComponents() const
+{
+	TArray<USkeletalMeshComponent*> Components;
+	
+	if (CachedActorInfo.IsValid())
+	{
+		for (const TWeakObjectPtr<USkeletalMeshComponent>& SkeletalMeshComponent : CachedActorInfo->SkeletalMeshComponents)
+		{
+			if (SkeletalMeshComponent.IsValid())
+			{
+				Components.Add(SkeletalMeshComponent.Get());
+			}
+		}
+	}
+	
+	return Components;
 }
 
 bool UGameplayAction::CanCancelAllActions() const 
@@ -323,14 +329,14 @@ bool UGameplayAction::CanApplyCost() const
         return false;
     }
 
-    UGameplayEffect* CostEffectCDO = CostEffect->GetDefaultObject<UGameplayEffect>();
+    UGameplayActionEffect* CostEffectCDO = CostEffect->GetDefaultObject<UGameplayActionEffect>();
 
     if (!IsValid(CostEffectCDO))
     {
         return false;
     }
 
-    for (const FGameplayModifierInfo& ModifierInfo : CostEffectCDO->Modifiers)
+    for (const FGameplayActionEffectModifierInfo& ModifierInfo : CostEffectCDO->Modifiers)
     {
         if (!ModifierInfo.Attribute.IsValid())
         {
@@ -345,15 +351,15 @@ bool UGameplayAction::CanApplyCost() const
 
         switch (ModifierInfo.ModifierOp)
         {
-            case EGameplayModOp::Additive:
+            case EGameplayActionEffectModOp::Additive:
                 NewValue += CostValue;
                 break;
                 
-            case EGameplayModOp::Multiplicative:
+            case EGameplayActionEffectModOp::Multiplicative:
                 NewValue *= CostValue;
                 break;
                 
-            case EGameplayModOp::Override:
+            case EGameplayActionEffectModOp::Override:
                 NewValue = CostValue;
                 break;
         }

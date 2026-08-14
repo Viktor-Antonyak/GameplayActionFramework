@@ -6,7 +6,7 @@
 #include "GameplayAttributePinCustomization.h"
 #include "EdGraphUtilities.h"
 #include "GameplayAction.h"
-#include "GameplayAttributeSet.h"
+#include "GameplayActionAttributeSet.h"
 #include "PropertyEditorModule.h"
 #include "AssetToolsModule.h"
 #include "IAssetTools.h"

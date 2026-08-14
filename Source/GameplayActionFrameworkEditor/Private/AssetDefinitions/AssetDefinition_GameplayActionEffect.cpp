@@ -1,36 +1,36 @@
 // Copyright (c) 2026 Viktor Antonyak. All Rights Reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-#include "AssetDefinitions/AssetDefinition_GameplayEffectExecutionCalculation.h"
+#include "AssetDefinitions/AssetDefinition_GameplayActionEffect.h"
 
 #include "AssetDefinitionRegistry.h"
 #include "AssetToolsModule.h"
 #include "ContentBrowserMenuContexts.h"
 #include "ContentBrowserModule.h"
-#include "Blueprints/GameplayEffectExecutionCalcBlueprint.h"
+#include "Blueprints/GameplayActionEffectBlueprint.h"
 #include "GameplayActionFrameworkFactories.h"
 #include "IContentBrowserSingleton.h"
 #include "Blueprint/BlueprintSupport.h"
 #include "Kismet2/KismetEditorUtilities.h"
 
-#define LOCTEXT_NAMESPACE "AssetDefinition_GameplayEffectExecutionCalculation"
+#define LOCTEXT_NAMESPACE "AssetDefinition_GameplayEffect"
 
-FText UAssetDefinition_GameplayEffectExecutionCalculation::GetAssetDisplayName() const
+FText UAssetDefinition_GameplayActionEffect::GetAssetDisplayName() const
 {
-	return FText::FromString(TEXT("Gameplay Effect Execution Calculation"));
+	return FText::FromString(TEXT("Gameplay Effect"));
 }
 
-FLinearColor UAssetDefinition_GameplayEffectExecutionCalculation::GetAssetColor() const
+FLinearColor UAssetDefinition_GameplayActionEffect::GetAssetColor() const
 {
-	return FLinearColor(1.0f, 0.6f, 0.2f);
+	return FLinearColor(0.2f, 1.0f, 0.2f);
 }
 
-TSoftClassPtr<UObject> UAssetDefinition_GameplayEffectExecutionCalculation::GetAssetClass() const
+TSoftClassPtr<UObject> UAssetDefinition_GameplayActionEffect::GetAssetClass() const
 {
-	return UGameplayEffectExecutionCalcBlueprint::StaticClass();
+	return UGameplayActionEffectBlueprint::StaticClass();
 }
 
-TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayEffectExecutionCalculation::GetAssetCategories() const
+TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayActionEffect::GetAssetCategories() const
 {
 	static const auto Categories = {
 		FAssetCategoryPath(NSLOCTEXT("AssetDefinitions", "GAF_Category", "Gameplay Action Framework")),
@@ -39,14 +39,14 @@ TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayEffectExecutionCalc
 	return Categories;
 }
 
-TWeakPtr<IClassTypeActions> UAssetDefinition_GameplayEffectExecutionCalculation::GetClassTypeActions(const FAssetData& AssetData) const
+TWeakPtr<IClassTypeActions> UAssetDefinition_GameplayActionEffect::GetClassTypeActions(const FAssetData& AssetData) const
 {
 	return Super::GetClassTypeActions(AssetData);
 }
 
-UFactory* UAssetDefinition_GameplayEffectExecutionCalculation::GetFactoryForBlueprintType(UBlueprint* InBlueprint) const
+UFactory* UAssetDefinition_GameplayActionEffect::GetFactoryForBlueprintType(UBlueprint* InBlueprint) const
 {
-	UGameplayEffectExecutionCalculationFactory* Factory = NewObject<UGameplayEffectExecutionCalculationFactory>();
+	UGameplayActionEffectFactory* Factory = NewObject<UGameplayActionEffectFactory>();
 
 	if (InBlueprint)
 	{
@@ -60,7 +60,7 @@ UFactory* UAssetDefinition_GameplayEffectExecutionCalculation::GetFactoryForBlue
 // Menu Extension
 //----------------------------------
 
-namespace MenuExtension_GameplayEffectExecutionCalculation
+namespace MenuExtension_GameplayEffect
 {
 	static void ExecuteNewDerivedBlueprint(const FToolMenuContext& MenuContext, const FAssetData SelectedBlueprintPtr)
 	{
@@ -79,7 +79,7 @@ namespace MenuExtension_GameplayEffectExecutionCalculation
 			AssetToolsModule.Get().CreateUniqueAssetName(ParentBlueprint->GetOutermost()->GetName(), TEXT("_Child"), PackageName, Name);
 			const FString PackagePath = FPackageName::GetLongPackagePath(PackageName);
 
-			const UAssetDefinition_GameplayEffectExecutionCalculation* AssetDefinition = Cast<UAssetDefinition_GameplayEffectExecutionCalculation>(UAssetDefinitionRegistry::Get()->GetAssetDefinitionForClass(ParentBlueprint->GetClass()));
+			const UAssetDefinition_GameplayActionEffect* AssetDefinition = Cast<UAssetDefinition_GameplayActionEffect>(UAssetDefinitionRegistry::Get()->GetAssetDefinitionForClass(ParentBlueprint->GetClass()));
 			if (AssetDefinition)
 			{
 				UFactory* Factory = AssetDefinition->GetFactoryForBlueprintType(ParentBlueprint);
@@ -95,23 +95,23 @@ namespace MenuExtension_GameplayEffectExecutionCalculation
 		{
 			FToolMenuOwnerScoped OwnerScoped(UE_MODULE_NAME);
 
-			UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayEffectExecutionCalcBlueprint::StaticClass());
+			UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayActionEffectBlueprint::StaticClass());
 
 			FToolMenuSection& Section = Menu->FindOrAddSection("GetAssetActions");
 			Section.AddDynamicEntry(NAME_None, FNewToolMenuSectionDelegate::CreateLambda([](FToolMenuSection& InSection)
 			{
 				if (const UContentBrowserAssetContextMenuContext* Context = UContentBrowserAssetContextMenuContext::FindContextWithAssets(InSection))
 				{
-					if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayEffectExecutionCalcBlueprint::StaticClass()))
+					if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayActionEffectBlueprint::StaticClass()))
 					{
-						const TAttribute<FText> Label = LOCTEXT("ExecCalc_NewDerivedBlueprint", "Create Child Execution Calculation");
-						const TAttribute<FText> ToolTip = LOCTEXT("ExecCalc_NewDerivedBlueprintTooltip", "Creates a Child Gameplay Effect Execution Calculation Blueprint based on the current one.");
+						const TAttribute<FText> Label = LOCTEXT("GameplayEffect_NewDerivedBlueprint", "Create Child Effect");
+						const TAttribute<FText> ToolTip = LOCTEXT("GameplayEffect_NewDerivedBlueprintTooltip", "Creates a Child Gameplay Effect Blueprint based on the current one.");
 						const FSlateIcon Icon = FSlateIcon(FAppStyle::GetAppStyleSetName(), "ClassIcon.Blueprint");
 
 						FToolUIAction DeriveNewBlueprint;
 						DeriveNewBlueprint.ExecuteAction = FToolMenuExecuteAction::CreateStatic(&ExecuteNewDerivedBlueprint, *SelectedAssetPtr);
 
-						InSection.AddMenuEntry("CreateChildExecutionCalculation", Label, ToolTip, Icon, DeriveNewBlueprint);
+						InSection.AddMenuEntry("CreateChildGameplayActionEffect", Label, ToolTip, Icon, DeriveNewBlueprint);
 					}
 				}
 			}));

@@ -5,23 +5,18 @@
 
 #include "CoreMinimal.h"
 #include "Script/AssetDefinition_Blueprint.h"
-#include "AssetDefinition_GameplayAttributeSet.generated.h"
+#include "AssetDefinition_GameplayActionEffectExecutionCalc.generated.h"
 
-/**
- * Modern UE5 Asset Definition for Gameplay Attribute Sets.
- */
 UCLASS()
-class UAssetDefinition_GameplayAttributeSet : public UAssetDefinition_Blueprint
+class UAssetDefinition_GameplayActionEffectExecutionCalc : public UAssetDefinition_Blueprint
 {
 	GENERATED_BODY()
 
 public:
-	// UAssetDefinition interface
 	virtual FText GetAssetDisplayName() const override;
-	virtual FLinearColor GetAssetColor() const override; 
+	virtual FLinearColor GetAssetColor() const override;
 	virtual TSoftClassPtr<UObject> GetAssetClass() const override;
 	virtual TConstArrayView<FAssetCategoryPath> GetAssetCategories() const override;
 	virtual TWeakPtr<IClassTypeActions> GetClassTypeActions(const FAssetData& AssetData) const override;
 	virtual UFactory* GetFactoryForBlueprintType(UBlueprint* InBlueprint) const override;
-	// End of UAssetDefinition interface
 };

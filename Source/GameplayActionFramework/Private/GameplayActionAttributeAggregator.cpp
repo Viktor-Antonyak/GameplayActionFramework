@@ -1,9 +1,9 @@
 // Copyright (c) 2026 Viktor Antonyak. All Rights Reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-#include "GameplayAttributeAggregator.h"
+#include "GameplayActionAttributeAggregator.h"
 
-void FGameplayAttributeAggregator::AddModifier(const FActiveGameplayEffectHandle& SourceHandle, EGameplayModOp Op, float Magnitude)
+void FGameplayActionAttributeAggregator::AddModifier(const FActiveGameplayActionEffectHandle& SourceHandle, EGameplayActionEffectModOp Op, float Magnitude)
 {
 	FAggregatorModifier NewModifier;
 	NewModifier.SourceHandle = SourceHandle;
@@ -13,7 +13,7 @@ void FGameplayAttributeAggregator::AddModifier(const FActiveGameplayEffectHandle
 	Modifiers.Add(NewModifier);
 }
 
-int32 FGameplayAttributeAggregator::RemoveModifiersFromSource(const FActiveGameplayEffectHandle& SourceHandle)
+int32 FGameplayActionAttributeAggregator::RemoveModifiersFromSource(const FActiveGameplayActionEffectHandle& SourceHandle)
 {
 	return Modifiers.RemoveAll([&SourceHandle](const FAggregatorModifier& Mod)
 	{
@@ -21,7 +21,7 @@ int32 FGameplayAttributeAggregator::RemoveModifiersFromSource(const FActiveGamep
 	});
 }
 
-float FGameplayAttributeAggregator::CalculateCurrentValue(float BaseValue) const
+float FGameplayActionAttributeAggregator::CalculateCurrentValue(float BaseValue) const
 {
 	float AdditiveSum = 0.0f;
 	
@@ -35,15 +35,15 @@ float FGameplayAttributeAggregator::CalculateCurrentValue(float BaseValue) const
 	{
 		switch (Mod.ModifierOp)
 		{
-		case EGameplayModOp::Additive:
+		case EGameplayActionEffectModOp::Additive:
 			AdditiveSum += Mod.Magnitude;
 			break;
 
-		case EGameplayModOp::Multiplicative:
+		case EGameplayActionEffectModOp::Multiplicative:
 			MultiplicativeProduct *= Mod.Magnitude;
 			break;
 
-		case EGameplayModOp::Override:
+		case EGameplayActionEffectModOp::Override:
 			bHasOverride = true;
 			OverrideValue = Mod.Magnitude;
 			break;

@@ -5,10 +5,10 @@
 
 #include "CoreMinimal.h"
 #include "GameplayActionTask.h"
-#include "GameplayAttributeSet.h"
+#include "GameplayActionAttributeSet.h"
 #include "GameplayActionTask_WaitAttributeChanged.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnAttributeChangedDelegate, FGameplayAttribute, Attribute, float, NewValue, float, OldValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnAttributeChangedDelegate, FGameplayActionAttribute, Attribute, float, NewValue, float, OldValue);
 
 /**
  * Waits for a specific Gameplay Attribute's numeric value to change on the owning GameplayActionComponent.
@@ -29,7 +29,7 @@ public:
 	static UGameplayActionTask_WaitAttributeChanged* WaitAttributeChanged
 	(
 		UObject* WorldContextObject,
-		FGameplayAttribute Attribute, 
+		FGameplayActionAttribute Attribute, 
 		bool bOnlyTriggerOnce = false
 	);
 	
@@ -44,9 +44,9 @@ protected:
 	virtual void OnDestroy(bool bInOwnerFinished) override;
 	
 	UFUNCTION()
-	void HandleAttribute(const FGameplayAttribute& Attribute, float NewValue, float OldValue);
+	void HandleAttribute(const FGameplayActionAttribute& Attribute, float NewValue, float OldValue);
 	
-	FGameplayAttribute WatchedAttribute;
+	FGameplayActionAttribute WatchedAttribute;
 	
 	bool bTriggerOnce = false;
 };

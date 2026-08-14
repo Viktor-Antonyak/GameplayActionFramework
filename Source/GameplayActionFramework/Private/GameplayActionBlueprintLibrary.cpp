@@ -5,10 +5,10 @@
 #include "GameFramework/Actor.h"
 #include "GameplayActionInterface.h"
 #include "GameplayActionComponent.h"
-#include "GameplayActionSpec.h"
-#include "GameplayAttributeSet.h"
-#include "GameplayEffect.h"
-#include "UObject/Object.h"
+#include "GameplayActionTypes.h"
+#include "GameplayActionAttributeSet.h"
+#include "GameplayActionEffect.h"
+#include "GameplayActionFragment.h"
 
 UGameplayActionComponent* UGameplayActionBlueprintLibrary::GetGameplayActionComponent(AActor* Actor)
 {
@@ -60,7 +60,7 @@ bool UGameplayActionBlueprintLibrary::RemoveOwnedGameplayTagsFromActor(AActor* A
 	return false;
 }
 
-float UGameplayActionBlueprintLibrary::GetAttributeValueFromActor(AActor* Actor, const FGameplayAttribute& Attribute)
+float UGameplayActionBlueprintLibrary::GetAttributeValueFromActor(AActor* Actor, const FGameplayActionAttribute& Attribute)
 {
 	if (IsValid(Actor))
 	{
@@ -73,31 +73,31 @@ float UGameplayActionBlueprintLibrary::GetAttributeValueFromActor(AActor* Actor,
 	return 0.0f;
 }
 
-bool UGameplayActionBlueprintLibrary::EqualAttributeStruct(const FGameplayAttribute& Attribute1, const FGameplayAttribute& Attribute2)
+bool UGameplayActionBlueprintLibrary::EqualAttributeStruct(const FGameplayActionAttribute& Attribute1, const FGameplayActionAttribute& Attribute2)
 {
     return Attribute1 == Attribute2;
 }
 
-bool UGameplayActionBlueprintLibrary::NotEqualAttributeStruct(const FGameplayAttribute &Attribute1, const FGameplayAttribute &Attribute2)
+bool UGameplayActionBlueprintLibrary::NotEqualAttributeStruct(const FGameplayActionAttribute &Attribute1, const FGameplayActionAttribute &Attribute2)
 {
     return Attribute1 != Attribute2;
 }
 
-FGameplayEffectSpec UGameplayActionBlueprintLibrary::MakeGameplayEffectSpec(TSubclassOf<UGameplayEffect> Effect, int32 Level, AActor* SourceActor)
+FGameplayActionEffectSpec UGameplayActionBlueprintLibrary::MakeGameplayEffectSpec(TSubclassOf<UGameplayActionEffect> Effect, int32 Level, AActor* SourceActor)
 {
     if (!IsValid(Effect))
     {
-        return FGameplayEffectSpec();
+        return FGameplayActionEffectSpec();
     }
 
-    const UGameplayEffect* EffectCDO = Effect->GetDefaultObject<UGameplayEffect>();
+    const UGameplayActionEffect* EffectCDO = Effect->GetDefaultObject<UGameplayActionEffect>();
 
     if (!IsValid(EffectCDO))
     {
-        return FGameplayEffectSpec();
+        return FGameplayActionEffectSpec();
     }
 
-    FGameplayEffectSpec Spec;
+    FGameplayActionEffectSpec Spec;
     Spec.Effect = EffectCDO;
 	Spec.Level = Level;
 	Spec.SourceActor = SourceActor;
@@ -105,7 +105,7 @@ FGameplayEffectSpec UGameplayActionBlueprintLibrary::MakeGameplayEffectSpec(TSub
     return Spec;
 }
 
-FGameplayEffectSpec UGameplayActionBlueprintLibrary::AddSetByCallerMagnitude(FGameplayEffectSpec Spec, FGameplayTag DataTag, float Magnitude)
+FGameplayActionEffectSpec UGameplayActionBlueprintLibrary::AddSetByCallerMagnitude(FGameplayActionEffectSpec Spec, FGameplayTag DataTag, float Magnitude)
 {
 	if (!IsValid(Spec.Effect) || !DataTag.IsValid())
 	{
@@ -116,36 +116,61 @@ FGameplayEffectSpec UGameplayActionBlueprintLibrary::AddSetByCallerMagnitude(FGa
 	return Spec;
 }
 
-FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffectSpecToActor(AActor* Actor, const FGameplayEffectSpec& Spec)
+FActiveGameplayActionEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffectSpecToActor(AActor* Actor, const FGameplayActionEffectSpec& Spec)
 {
     if (!IsValid(Actor) || !IsValid(Spec.Effect))
     {
-        return FActiveGameplayEffectHandle();
+        return FActiveGameplayActionEffectHandle();
     }
 
     UGameplayActionComponent* ActionComponent = GetGameplayActionComponent(Actor);
 
     if (!IsValid(ActionComponent))
     {
-        return FActiveGameplayEffectHandle();
+        return FActiveGameplayActionEffectHandle();
     }
 
     return ActionComponent->ApplyGameplayEffectSpecToSelf(Spec);
 }
 
-FActiveGameplayEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffectToActor(AActor* Actor, TSubclassOf<UGameplayEffect> Effect, int32 Level, AActor* SourceActor)
+FActiveGameplayActionEffectHandle UGameplayActionBlueprintLibrary::ApplyGameplayEffectToActor(AActor* Actor, TSubclassOf<UGameplayActionEffect> Effect, int32 Level, AActor* SourceActor)
 {
    if (!IsValid(Actor) || !IsValid(Effect))
    {
-       return FActiveGameplayEffectHandle();
+       return FActiveGameplayActionEffectHandle();
    }
 
    UGameplayActionComponent* ActionComponent = GetGameplayActionComponent(Actor);
 
    if (!IsValid(ActionComponent))
    {
-       return FActiveGameplayEffectHandle();
+       return FActiveGameplayActionEffectHandle();
    }
 
    return ActionComponent->ApplyGameplayEffectToSelf(Effect, Level, SourceActor);
+}
+
+UGameplayActionFragment* UGameplayActionBlueprintLibrary::FindFragment(
+	const FGameplayActionFragmentsHandle& FragmentsHandle, TSubclassOf<UGameplayActionFragment> Fragment, bool& IsFound)
+{
+	IsFound = false;
+	
+	if (!IsValid(Fragment))
+	{
+		return nullptr;
+	}
+	
+	const TObjectPtr<UGameplayActionFragment>* Found = FragmentsHandle.FragmentSlots.FindByPredicate([Fragment](const UGameplayActionFragment* FoundFragment)
+	{
+		return IsValid(FoundFragment) && FoundFragment->IsA(Fragment);
+	});
+
+	if (Found && IsValid(*Found))
+	{
+		IsFound = true;
+		
+		return *Found;
+	}
+	
+	return nullptr;
 }

@@ -6,14 +6,15 @@
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "GameplayTagContainer.h"
-#include "GameplayAttributeSet.h"
-#include "GameplayEffect.h"
+#include "GameplayActionAttributeSet.h"
+#include "GameplayActionEffect.h"
+#include "GameplayActionTypes.h"
 #include "Templates/SubclassOf.h"
-#include "UObject/ObjectMacros.h"
 #include "GameplayActionBlueprintLibrary.generated.h"
 
+class UGameplayActionFragment;
 class UGameplayActionComponent;
-struct FGameplayAttribute;
+struct FGameplayActionAttribute;
 
 /**
  * Blueprint function library for the Gameplay Action Framework.
@@ -30,7 +31,7 @@ public:
 	static UGameplayActionComponent* GetGameplayActionComponent(AActor* Actor);
 
 	/** Returns the owned gameplay tags of the actor. */
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
+	UFUNCTION(BlueprintPure, Category = "Gameplay Action")
 	static FGameplayTagContainer GetOwnedGameplayTagsFromActor(AActor* Actor);
 
 	/** Adds owned gameplay tags to the actor. */
@@ -42,28 +43,33 @@ public:
 	static bool RemoveOwnedGameplayTagsFromActor(AActor* Actor, FGameplayTagContainer Tags, int32 Quantity = 1);
 
 	/** Returns the float value of an attribute from the actor. */
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
-	static float GetAttributeValueFromActor(AActor* Actor, const FGameplayAttribute& Attribute);
+	UFUNCTION(BlueprintPure, Category = "Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
+	static float GetAttributeValueFromActor(AActor* Actor, const FGameplayActionAttribute& Attribute);
 
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal (GameplayAttributeStruct)", CompactNodeTitle = "==", AutoCreateRefTerm = "Attribute1, Attribute2"), Category = "Gameplay Attribute | Utilities")
-	static bool EqualAttributeStruct(const FGameplayAttribute& Attribute1, const FGameplayAttribute& Attribute2);
+	static bool EqualAttributeStruct(const FGameplayActionAttribute& Attribute1, const FGameplayActionAttribute& Attribute2);
 	
 	UFUNCTION(BlueprintPure, meta = (DisplayName = "Not Equal (GameplayAttributeStruct)", CompactNodeTitle = "!=", AutoCreateRefTerm = "Attribute1, Attribute2"), Category = "Gameplay Attribute | Utilities")
-	static bool NotEqualAttributeStruct(const FGameplayAttribute& Attribute1, const FGameplayAttribute& Attribute2);
+	static bool NotEqualAttributeStruct(const FGameplayActionAttribute& Attribute1, const FGameplayActionAttribute& Attribute2);
 
 	/** Creates a gameplay effect spec from an effect class. */
 	UFUNCTION(BlueprintPure, Category = "Gameplay Effect")
-	static FGameplayEffectSpec MakeGameplayEffectSpec(TSubclassOf<UGameplayEffect> Effect, int32 Level = 1, AActor* SourceActor = nullptr);
+	static FGameplayActionEffectSpec MakeGameplayEffectSpec(TSubclassOf<UGameplayActionEffect> Effect, int32 Level = 1, AActor* SourceActor = nullptr);
 
 	/** Adds a set-by-caller magnitude to the effect spec. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
-	static FGameplayEffectSpec AddSetByCallerMagnitude(FGameplayEffectSpec Spec, FGameplayTag DataTag, float Magnitude);
+	static FGameplayActionEffectSpec AddSetByCallerMagnitude(FGameplayActionEffectSpec Spec, FGameplayTag DataTag, float Magnitude);
 	
 	/** Applies a gameplay effect to the target actor by spec. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
-	static FActiveGameplayEffectHandle ApplyGameplayEffectSpecToActor(AActor* Actor, const FGameplayEffectSpec& Spec);
+	static FActiveGameplayActionEffectHandle ApplyGameplayEffectSpecToActor(AActor* Actor, const FGameplayActionEffectSpec& Spec);
 	
 	/** Applies a gameplay effect to the target actor by effect class. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
-	static FActiveGameplayEffectHandle ApplyGameplayEffectToActor(AActor* Actor, TSubclassOf<UGameplayEffect> Effect, int32 Level = 1, AActor* SourceActor = nullptr);
+	static FActiveGameplayActionEffectHandle ApplyGameplayEffectToActor(AActor* Actor, TSubclassOf<UGameplayActionEffect> Effect, int32 Level = 1, AActor* SourceActor = nullptr);
+	
+	/** Finds a fragment of the given class inside the fragments handle. */
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Fragments", meta = (DeterminesOutputType = "Fragment", ExpandBoolAsExecs = "IsFound"))
+	static UGameplayActionFragment* FindFragment(const FGameplayActionFragmentsHandle& FragmentsHandle,
+											  TSubclassOf<UGameplayActionFragment> Fragment, bool& IsFound);
 };

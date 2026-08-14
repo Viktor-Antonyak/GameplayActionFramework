@@ -7,18 +7,18 @@
 #include "Engine/TimerHandle.h"
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
-#include "GameplayEffectTypes.h"
-#include "GameplayAttributeSet.h"
-#include "GameplayEffect.generated.h"
+#include "GameplayActionEffectTypes.h"
+#include "GameplayActionAttributeSet.h"
+#include "GameplayActionEffect.generated.h"
 
-class UGameplayEffectMagnitudeCalculation;
-class UGameplayEffectExecutionCalculation;
+class UGameplayActionEffectMagnitudeCalc;
+class UGameplayActionEffectExecutionCalc;
 
 /**
  * Gameplay Effect duration types.
  */
 UENUM(BlueprintType)
-enum class EGameplayEffectDuration : uint8
+enum class EGameplayActionEffectDuration : uint8
 {
     Instant,
     Infinite,
@@ -27,7 +27,7 @@ enum class EGameplayEffectDuration : uint8
 
 
 UENUM(BlueprintType)
-enum class EGameplayEffectStacking : uint8
+enum class EGameplayActionEffectStacking : uint8
 {
     None,
     AggregateBySource,
@@ -35,18 +35,18 @@ enum class EGameplayEffectStacking : uint8
 };
 
 USTRUCT(BlueprintType)
-struct FGameplayModifierInfo
+struct FGameplayActionEffectModifierInfo
 {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Modifier")
-    TSubclassOf<UGameplayEffectMagnitudeCalculation> MagnitudeCalculation = nullptr;
+    TSubclassOf<UGameplayActionEffectMagnitudeCalc> MagnitudeCalculation = nullptr;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Modifier")
-    FGameplayAttribute Attribute;
+    FGameplayActionAttribute Attribute;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Modifier")
-    EGameplayModOp ModifierOp = EGameplayModOp::Additive;
+    EGameplayActionEffectModOp ModifierOp = EGameplayActionEffectModOp::Additive;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Modifier")
     float Magnitude = 0.0f;
@@ -56,23 +56,23 @@ struct FGameplayModifierInfo
 };
 
 USTRUCT(BlueprintType)
-struct FGameplayEffectSpec
+struct FGameplayActionEffectSpec
 {
     GENERATED_BODY()
 
-    UPROPERTY(BlueprintReadWrite)
-    const class UGameplayEffect* Effect = nullptr;
+    UPROPERTY(BlueprintReadWrite, Category = "Gameplay Action Effect")
+    const UGameplayActionEffect* Effect = nullptr;
 
-    UPROPERTY(BlueprintReadWrite)
+    UPROPERTY(BlueprintReadWrite, Category = "Gameplay Action Effect")
     TMap<FGameplayTag, float> SetByCallerMagnitudes;
     
-    UPROPERTY(BlueprintReadWrite)
+    UPROPERTY(BlueprintReadWrite, Category = "Gameplay Action Effect")
     int32 Level = 1;
     
     /** The actor that caused/instigated this effect (e.g. the attacker). Used for AggregateBySource stacking
      * and available to MagnitudeCalculation/ExecutionCalculation for source-relative logic. 
      */
-    UPROPERTY(BlueprintReadWrite)
+    UPROPERTY(BlueprintReadWrite, Category = "Gameplay Action Effect")
     TWeakObjectPtr<AActor> SourceActor;
 
     void SetSetByCallerMagnitude(FGameplayTag Tag, float Magnitude)
@@ -90,21 +90,21 @@ struct FGameplayEffectSpec
 };
 
 USTRUCT(BlueprintType)
-struct FActiveGameplayEffect
+struct FActiveGameplayActionEffect
 {
     GENERATED_BODY()
 
-    UPROPERTY(BlueprintReadOnly)
-    FGameplayEffectSpec Spec;
+    UPROPERTY(BlueprintReadOnly, Category = "Gameplay Action Effect")
+    FGameplayActionEffectSpec Spec;
 
-    UPROPERTY(BlueprintReadOnly)
+    UPROPERTY(BlueprintReadOnly, Category = "Gameplay Action Effect")
     float StartTime = 0.0f;
 
-    UPROPERTY(BlueprintReadOnly)
+    UPROPERTY(BlueprintReadOnly, Category = "Gameplay Action Effect")
     float Duration = 0.0f;
 
-    UPROPERTY(BlueprintReadOnly)
-    FActiveGameplayEffectHandle Handle;
+    UPROPERTY(BlueprintReadOnly, Category = "Gameplay Action Effect")
+    FActiveGameplayActionEffectHandle Handle;
 
     FTimerHandle DurationHandle;
 
@@ -123,42 +123,47 @@ struct FActiveGameplayEffect
  * Base Gameplay Effect to modify attribute/grant Gameplay Tags
  */
 UCLASS(BlueprintType, Blueprintable, Abstract)
-class GAMEPLAYACTIONFRAMEWORK_API UGameplayEffect : public UDataAsset
+class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionEffect : public UDataAsset
 {
 	GENERATED_BODY()
 
 public:
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Duration")
-    EGameplayEffectDuration DurationPolicy = EGameplayEffectDuration::Instant;
+    EGameplayActionEffectDuration DurationPolicy = EGameplayActionEffectDuration::Instant;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Duration", meta=(EditCondition="DurationPolicy == EGameplayEffectDuration::HasDuration"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Duration", meta=(EditCondition="DurationPolicy == EGameplayActionEffectDuration::HasDuration"))
     float DurationMagnitude = 0.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")
-    TSubclassOf<UGameplayEffectExecutionCalculation> ExecutionCalculation;
+    TSubclassOf<UGameplayActionEffectExecutionCalc> ExecutionCalculation;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Modifiers")
-    TArray<FGameplayModifierInfo> Modifiers;
+    TArray<FGameplayActionEffectModifierInfo> Modifiers;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tags")
     FGameplayTagContainer GrantedTags;
 
+    /** Tags the target must own for the effect to apply; empty means no requirement. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Tags | Requirements")
     FGameplayTagContainer ApplicationRequiredTags;
 
+    /** Tags that, if present on the target, prevent the effect from applying. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Tags | Requirements")
     FGameplayTagContainer ApplicationBlockedTags;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Period", meta=(EditCondition="DurationPolicy != EGameplayEffectDuration::Instant"))
+    /** Delay in seconds between periodic executions; 0 disables periodic ticking. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Period", meta=(EditCondition="DurationPolicy != EGameplayActionEffectDuration::Instant"))
     float Period = 0.0f;
 
+    /** If true, the first periodic execution fires immediately on application. */
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Period", meta=(EditCondition="Period > 0.0f"))
     bool bExecutePeriodicOnApplication = true;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stacking")
-    EGameplayEffectStacking StackingPolicy = EGameplayEffectStacking::None;
+    EGameplayActionEffectStacking StackingPolicy = EGameplayActionEffectStacking::None;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stacking", meta=(EditCondition="StackingPolicy != EGameplayEffectStacking::None"))
+    /** Maximum number of concurrent stacks from the same source. */
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Stacking", meta=(EditCondition="StackingPolicy != EGameplayActionEffectStacking::None"))
     int32 StackLimitCount = 1;
 };

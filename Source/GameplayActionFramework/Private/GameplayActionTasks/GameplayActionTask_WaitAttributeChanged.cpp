@@ -3,11 +3,12 @@
 
 
 #include "GameplayActionTasks/GameplayActionTask_WaitAttributeChanged.h"
+#include "GameplayActionComponent.h"
 
 UGameplayActionTask_WaitAttributeChanged* UGameplayActionTask_WaitAttributeChanged::WaitAttributeChanged
 (
 	UObject* WorldContextObject,
-	FGameplayAttribute Attribute,
+	FGameplayActionAttribute Attribute,
 	bool bOnlyTriggerOnce
 )
 {
@@ -51,7 +52,7 @@ void UGameplayActionTask_WaitAttributeChanged::OnDestroy(bool bInOwnerFinished)
 	Super::OnDestroy(bInOwnerFinished);
 }
 
-void UGameplayActionTask_WaitAttributeChanged::HandleAttribute(const FGameplayAttribute& Attribute, float NewValue, float OldValue)
+void UGameplayActionTask_WaitAttributeChanged::HandleAttribute(const FGameplayActionAttribute& Attribute, float NewValue, float OldValue)
 {
 	if (Attribute != WatchedAttribute)
 	{

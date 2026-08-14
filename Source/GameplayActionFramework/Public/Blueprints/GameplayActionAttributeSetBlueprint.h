@@ -5,17 +5,21 @@
 
 #include "CoreMinimal.h"
 #include "Engine/Blueprint.h"
-#include "GameplayEffectMagnitudeCalcBlueprint.generated.h"
+#include "GameplayActionAttributeSetBlueprint.generated.h"
 
+/**
+ * A specialized Blueprint class for Gameplay Attribute Sets.
+ */
 UCLASS(BlueprintType)
-class GAMEPLAYACTIONFRAMEWORK_API UGameplayEffectMagnitudeCalcBlueprint : public UBlueprint
+class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionAttributeSetBlueprint : public UBlueprint
 {
 	GENERATED_BODY()
 
 public:
-	UGameplayEffectMagnitudeCalcBlueprint(const FObjectInitializer& ObjectInitializer);
 
 #if WITH_EDITOR
+	// UBlueprint interface
 	virtual bool SupportedByDefaultBlueprintFactory() const override { return false; }
+	// End of UBlueprint interface
 #endif
 };

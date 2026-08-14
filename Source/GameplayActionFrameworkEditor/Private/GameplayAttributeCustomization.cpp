@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 #include "GameplayAttributeCustomization.h"
-#include "GameplayAttributeSet.h"
+#include "GameplayActionAttributeSet.h"
 #include "DetailWidgetRow.h"
 #include "DetailLayoutBuilder.h"
 #include "HAL/Platform.h"
@@ -21,7 +21,7 @@ TSharedRef<IPropertyTypeCustomization> FGameplayAttributeCustomization::MakeInst
 void FGameplayAttributeCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> StructPropertyHandle, FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
 	CachedStructPropertyHandle = StructPropertyHandle;
-	AttributePropertyHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FGameplayAttribute, Attribute));
+	AttributePropertyHandle = StructPropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FGameplayActionAttribute, Attribute));
 
 	if (!AttributePropertyHandle.IsValid())
 	{
@@ -44,16 +44,16 @@ void FGameplayAttributeCustomization::CustomizeHeader(TSharedRef<IPropertyHandle
 		}
 
 		// Only consider valid GameplayAttributeSet classes
-		if (Class->IsChildOf(UGameplayAttributeSet::StaticClass()) && 
+		if (Class->IsChildOf(UGameplayActionAttributeSet::StaticClass()) && 
 			!Class->HasAnyClassFlags(CLASS_Abstract | CLASS_NewerVersionExists))
 		{
 			for (TFieldIterator<FProperty> PropIt(Class, EFieldIteratorFlags::ExcludeSuper); PropIt; ++PropIt)
 			{
 				FProperty* Property = *PropIt;
 				
-				// Check if the property is FGameplayAttributeData
+				// Check if the property is FGameplayActionAttributeData
 				FStructProperty* StructProp = CastField<FStructProperty>(Property);
-				if (StructProp && StructProp->Struct == FGameplayAttributeData::StaticStruct())
+				if (StructProp && StructProp->Struct == FGameplayActionAttributeData::StaticStruct())
 				{
 					FString DisplayClassName = Class->GetName();
 					DisplayClassName.RemoveFromStart(TEXT("U"));
@@ -94,12 +94,12 @@ void FGameplayAttributeCustomization::OnAttributeSelected(TSharedPtr<FAttributeI
 {
 	if (SelectedItem.IsValid() && CachedStructPropertyHandle.IsValid())
 	{
-		FGameplayAttribute NewAttributeStruct = SelectedItem->Property 
-			? FGameplayAttribute(SelectedItem->Property) 
-			: FGameplayAttribute();
+		FGameplayActionAttribute NewAttributeStruct = SelectedItem->Property 
+			? FGameplayActionAttribute(SelectedItem->Property) 
+			: FGameplayActionAttribute();
 
 		FString ValueString;
-		FGameplayAttribute::StaticStruct()->ExportText(ValueString, &NewAttributeStruct, &NewAttributeStruct, nullptr, EPropertyPortFlags::PPF_SerializedAsImportText, nullptr);
+		FGameplayActionAttribute::StaticStruct()->ExportText(ValueString, &NewAttributeStruct, &NewAttributeStruct, nullptr, EPropertyPortFlags::PPF_SerializedAsImportText, nullptr);
 
 		CachedStructPropertyHandle->SetValueFromFormattedString(ValueString);
 	}

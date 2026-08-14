@@ -32,7 +32,9 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 - `GameplayTags` and `GameplayTasks` engine modules
 - `StructUtils` plugin (for `FInstancedStruct`)
 
-> **Not compatible with Epic's built-in GameplayAbilities plugin.** Several reflected type names (`EGameplayModOp`, `FGameplayEffectSpec`, `FActiveGameplayEffectHandle`, `FGameplayAttribute`, etc.) collide with GAS at the UHT level, causing compile errors. Disable the `GameplayAbilities` plugin in your project if you want to use this framework.
+> **Works alongside Epic's built-in GameplayAbilities plugin (fixed in v1.5).** Versions ≤1.4 were incompatible with GAS: several reflected type names (`EGameplayModOp`, `FGameplayEffectSpec`, `FActiveGameplayEffectHandle`, `FGameplayAttribute`, etc.) collided at the UHT level and caused compile errors. From **v1.5** all reflected types were renamed under the `GameplayAction*` prefix, so the two can coexist.
+>
+> **Renamed types:** `UGameplayEffect` → `UGameplayActionEffect`, `FGameplayEffectSpec` → `FGameplayActionEffectSpec`, `FActiveGameplayEffect(Handle)` → `FActiveGameplayActionEffect(Handle)`, `EGameplayModOp` → `EGameplayActionEffectModOp`, `FGameplayModifierInfo` → `FGameplayActionEffectModifierInfo`, `UGameplayAttributeSet` → `UGameplayActionAttributeSet`, `FGameplayAttribute(Data)` → `FGameplayActionAttribute(Data)`, `UGameplayEffectMagnitudeCalculation` → `UGameplayActionEffectMagnitudeCalc`, `UGameplayEffectExecutionCalculation` → `UGameplayActionEffectExecutionCalc`, and their Blueprint / editor counterparts. Core redirects in `Config/DefaultGameplayActionFramework.ini` migrate existing assets automatically.
 
 ## How It Works
 
@@ -59,14 +61,14 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 
 ### Gameplay Effects
 
-`UGameplayEffect` is a `UDataAsset` defining attribute modifications. Effects are applied via `ApplyGameplayEffectSpecToSelf` / `ApplyGameplayEffectToSelf`. Each `FGameplayEffectSpec` carries a `Level` (default 1) for level-scaled effects and an optional `SourceActor` — the instigator (used for source-based stacking and available to Magnitude/Execution calculations). Pass it when applying via `MakeGameplayEffectSpec` / `ApplyGameplayEffectToActor` / `ApplyGameplayEffectToSelf`.
+`UGameplayActionEffect` is a `UDataAsset` defining attribute modifications. Effects are applied via `ApplyGameplayEffectSpecToSelf` / `ApplyGameplayEffectToSelf`. Each `FGameplayActionEffectSpec` carries a `Level` (default 1) for level-scaled effects and an optional `SourceActor` — the instigator (used for source-based stacking and available to Magnitude/Execution calculations). Pass it when applying via `MakeGameplayEffectSpec` / `ApplyGameplayEffectToActor` / `ApplyGameplayEffectToSelf`.
 
 **Duration** — controlled by `DurationPolicy`:
 - `Instant` — modifiers are evaluated once and applied **directly to the attribute's BaseValue** (additive/multiplicative/override on the base), no timer, no revert. Good for damage, healing, cost/cooldown.
 - `HasDuration` — modifiers are registered with the attribute **aggregator** (see below) for the effect's lifetime, then removed on expiry.
 - `Infinite` — same as `HasDuration` but never expires (removed manually).
 
-**Duration/Infinite modifiers and the aggregator** — instead of mutating a value in place, each active modifier is registered with a per-attribute `FGameplayAttributeAggregator`. The attribute's `CurrentValue` is recomputed as:
+**Duration/Infinite modifiers and the aggregator** — instead of mutating a value in place, each active modifier is registered with a per-attribute `FGameplayActionAttributeAggregator`. The attribute's `CurrentValue` is recomputed as:
 
 ```
 CurrentValue = (BaseValue + Sum(Additive)) * Product(Multiplicative)
@@ -83,7 +85,7 @@ or, if any `Override` modifier is active, `CurrentValue = <last Override>`. This
 
 **Execution Calculation** — runs after all modifiers. Useful for reading final attribute values and applying follow-up logic (e.g., read health after damage → apply bleed).
 
-**Magnitude priority** (per `FGameplayModifierInfo`, only when no Execution is set):
+**Magnitude priority** (per `FGameplayActionEffectModifierInfo`, only when no Execution is set):
 1. `MagnitudeCalculation` — if set, `CalculateMagnitude(EffectSpec, ActionComponent)` is called
 2. `DataTag` — if a `SetByCaller` magnitude with matching tag exists in the spec
 3. `Magnitude` — raw float value
@@ -109,22 +111,22 @@ Actions can optionally define:
 - **Cost effect** (`CostEffect`) — applied before activation. `CanApplyCost` checks if the cost would bring any attribute below 0. Override `OnExecuteAction` and call `CommitCost(CostLevel = 1)` manually to enforce it.
 - **Cooldown effect** (`CooldownEffect`) — applied when the action ends. `RequestExecuteAction` checks `HasActiveEffect(CooldownEffect)` and blocks activation if the cooldown is still active. `CommitCooldown(CooldownLevel = 1)` applies it at the given level.
 
-Both are regular `UGameplayEffect` assets — use Instant duration with Additive modifiers on the relevant attributes.
+Both are regular `UGameplayActionEffect` assets — use Instant duration with Additive modifiers on the relevant attributes.
 
 ### Attribute Sets
 
-`UGameplayAttributeSet` is a container for `FGameplayAttributeData` properties. Define your attributes as `UPROPERTY` members of type `FGameplayAttributeData`:
+`UGameplayActionAttributeSet` is a container for `FGameplayActionAttributeData` properties. Define your attributes as `UPROPERTY` members of type `FGameplayActionAttributeData`:
 
 ```cpp
 UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attributes")
-FGameplayAttributeData Health;
+FGameplayActionAttributeData Health;
 UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attributes")
-FGameplayAttributeData Mana;
+FGameplayActionAttributeData Mana;
 ```
 
 BaseValue is the persistent source of truth; CurrentValue is the runtime value. Duration/Infinite effects never touch BaseValue — they contribute through the aggregator and CurrentValue is recomputed from `BaseValue + modifiers`. Instant and Periodic effects mutate BaseValue directly (via `SetBaseValue`), and CurrentValue is recalculated after each change.
 
-> **Note on `FGameplayAttribute` parameters:** when you expose `FGameplayAttribute` in an async/`BlueprintInternalUseOnly`-style (Task, Latent) node signature, use a plain `FGameplayAttribute` parameter — **not** `const FGameplayAttribute&`. A `const` reference breaks the Blueprint attribute picker, so the selected value will not be correctly written. Use `FGameplayAttribute` (by value) so the PickAttribute dropdown works.
+> **Note on `FGameplayActionAttribute` parameters:** when you expose `FGameplayActionAttribute` in an async/`BlueprintInternalUseOnly`-style (Task, Latent) node signature, use a plain `FGameplayActionAttribute` parameter — **not** `const FGameplayActionAttribute&`. A `const` reference breaks the Blueprint attribute picker, so the selected value will not be correctly written. Use `FGameplayActionAttribute` (by value) so the PickAttribute dropdown works.
 
 Callbacks:
 - `PreAttributeChange(Attribute, NewValue)` → returns `float` — called before a current-value change; return the clamped value
@@ -135,11 +137,11 @@ The component broadcasts `OnAttributeChanged(Attribute, NewValue, OldValue)` whe
 
 ### Magnitude Calculation
 
-Create a child Blueprint of `UGameplayEffectMagnitudeCalculation` and override `CalculateMagnitude`. Assign it to a `MagnitudeCalculation` field in `FGameplayModifierInfo`. The calculation is evaluated at effect application time with access to the full `FGameplayEffectSpec` and the target's `UGameplayActionComponent`.
+Create a child Blueprint of `UGameplayActionEffectMagnitudeCalc` and override `CalculateMagnitude`. Assign it to a `MagnitudeCalculation` field in `FGameplayActionEffectModifierInfo`. The calculation is evaluated at effect application time with access to the full `FGameplayActionEffectSpec` and the target's `UGameplayActionComponent`.
 
 ### Execution Calculation
 
-Create a child Blueprint of `UGameplayEffectExecutionCalculation` and override `Execute`. Assign it to the `ExecutionCalculation` field on the effect itself. It runs **after** all modifiers, so you can read final attribute values to apply follow-up logic.
+Create a child Blueprint of `UGameplayActionEffectExecutionCalc` and override `Execute`. Assign it to the `ExecutionCalculation` field on the effect itself. It runs **after** all modifiers, so you can read final attribute values to apply follow-up logic.
 
 Use Execution Calculation when:
 - Damage reduces to armour/damage mitigation formulas
@@ -150,7 +152,7 @@ Use Execution Calculation when:
 ```cpp
 // Example: damage with armour mitigation + bleed
 void UMyExecution::Execute_Implementation(
-    const FGameplayEffectSpec& Spec,
+    const FGameplayActionEffectSpec& Spec,
     UGameplayActionComponent* Target)
 {
     float RawDamage = Spec.GetSetByCallerMagnitude(DamageTag);
@@ -161,7 +163,7 @@ void UMyExecution::Execute_Implementation(
         Target->GetAttributeValue(HealthAttr) - FinalDamage);
 
     float Bleed = FinalDamage * FMath::FRandRange(0.05f, 0.10f);
-    FGameplayEffectSpec BleedSpec;
+    FGameplayActionEffectSpec BleedSpec;
     BleedSpec.Effect = BleedEffectCDO;
     BleedSpec.SetSetByCallerMagnitude(BleedTag, Bleed);
     Target->ApplyGameplayEffectSpecToSelf(BleedSpec);
@@ -183,6 +185,7 @@ void UMyExecution::Execute_Implementation(
 | `AddSetByCallerMagnitude` | Adds a set-by-caller magnitude to a spec |
 | `ApplyGameplayEffectSpecToActor` | Applies an effect spec to an actor |
 | `ApplyGameplayEffectToActor(Effect, Level=1, SourceActor=null)` | Applies an effect class to an actor with optional level and source |
+| `FindFragment(FragmentsHandle, Fragment, IsFound)` | Returns a fragment of the given class from a fragments handle |
 
 ### Gameplay Action Tasks
 
@@ -229,18 +232,33 @@ Tags involved:
 
 These complement the native `InitializeAction` / `DeinitializeAction` overrides for Blueprint wiring.
 
+### Gameplay Action Fragments
+
+`UGameplayActionFragment` is a `UObject` base class (child Blueprints can be edited in-place via `EditInlineNew` / `DefaultToInstanced`) for the data-oriented approach — child Blueprints hold optional custom data that can be attached to a `FGameplayActionFragmentsHandle`. Use `FindFragment(Handle, FragmentClass, IsFound)` (Blueprint library, with `ExpandBoolAsExecs`) to look up a fragment and get its data:
+
+```cpp
+FGameplayActionFragmentsHandle Handle;
+// ... fill Handle.FragmentSlots with fragment instances ...
+
+UGameplayActionFragment* Fragment = UGameplayActionBlueprintLibrary::FindFragment(Handle, UMyFragment::StaticClass(), bIsFound);
+if (bIsFound) { /* cast to UMyFragment and use its data */ }
+```
+
+This keeps gameplay data separate from behaviour and lets a single action read different configuration depending on which fragments were attached.
+
 ## Structure
 
 | Class | Role |
 |-------|------|
 | `UGameplayActionComponent` | Owned by the actor; manages actions, effects, tags (via `FGameplayTagStackableContainer`), and attributes |
 | `UGameplayAction` | Base for all actions — Default (reusable) or Triggered (one‑shot) |
-| `UGameplayEffect` | Data asset defining modifiers, duration, period, stacking, and tags |
-| `FActiveGameplayEffectsContainer` | Map of active effects by handle; owns stacking and inhibition lookups |
-| `FGameplayAttributeAggregator` | Per-attribute recomputation from BaseValue + active Duration/Infinite modifiers |
-| `UGameplayAttributeSet` | Container for `FGameplayAttributeData` properties |
-| `UGameplayEffectMagnitudeCalculation` | Custom magnitude calculation per modifier |
-| `UGameplayEffectExecutionCalculation` | Full control over effect application (replaces modifiers) |
+| `UGameplayActionEffect` | Data asset defining modifiers, duration, period, stacking, and tags |
+| `FActiveGameplayActionEffectsContainer` | Map of active effects by handle; owns stacking and inhibition lookups |
+| `FGameplayActionAttributeAggregator` | Per-attribute recomputation from BaseValue + active Duration/Infinite modifiers |
+| `UGameplayActionAttributeSet` | Container for `FGameplayActionAttributeData` properties |
+| `UGameplayActionEffectMagnitudeCalc` | Custom magnitude calculation per modifier |
+| `UGameplayActionEffectExecutionCalc` | Full control over effect application (replaces modifiers) |
+| `UGameplayActionFragment` | Object base for the data-oriented approach — optional custom data queried via `FindFragment` |
 | `IGameplayActionInterface` | Interface for actors; exposes `GetGameplayActionComponent()` |
 | `UGameplayActionTask` | Base for Blueprint tasks running on the component — waiting for events, movement, and montage playback |
 | `UGameplayActionFrameworkDebugSubsystem` | World subsystem; renders debug info toggled by `DebugGAF` |

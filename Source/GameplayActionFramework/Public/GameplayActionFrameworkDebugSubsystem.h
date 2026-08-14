@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Viktor Antonyak. All Rights Reserved.
+// Licensed under the MIT License. See LICENSE file in the project root for full license information.
+
 #pragma once
 
 #include "CoreMinimal.h"
@@ -13,6 +16,7 @@ public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
 
+	/** Draws debug information for all actions, active effects, and attributes on the canvas. */
 	void OnDebugDraw(class UCanvas* Canvas, class APlayerController* PlayerController);
 
 private:

@@ -1,50 +1,50 @@
 // Copyright (c) 2026 Viktor Antonyak. All Rights Reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-#include "AssetDefinitions/AssetDefinition_GameplayAttributeSet.h"
+#include "AssetDefinitions/AssetDefinition_GameplayActionAttributeSet.h"
 
 #include "AssetDefinitionRegistry.h"
 #include "AssetToolsModule.h"
 #include "ContentBrowserMenuContexts.h"
 #include "ContentBrowserModule.h"
 #include "GameplayActionFrameworkFactories.h"
-#include "Blueprints/GameplayAttributeSetBlueprint.h"
+#include "Blueprints/GameplayActionAttributeSetBlueprint.h"
 #include "IContentBrowserSingleton.h"
 #include "Blueprint/BlueprintSupport.h"
 #include "Kismet2/KismetEditorUtilities.h"
 
 #define LOCTEXT_NAMESPACE "AssetDefinition_GameplayAttributeSet"
 
-FText UAssetDefinition_GameplayAttributeSet::GetAssetDisplayName() const
+FText UAssetDefinition_GameplayActionAttributeSet::GetAssetDisplayName() const
 {
-	return FText::FromString(TEXT("Gameplay Attribute Set"));
+	return FText::FromString(TEXT("Attribute Set"));
 }
 
-FLinearColor UAssetDefinition_GameplayAttributeSet::GetAssetColor() const
+FLinearColor UAssetDefinition_GameplayActionAttributeSet::GetAssetColor() const
 {
 	return FLinearColor(1.0f, 0.0f, 0.4f);
 }
 
-TSoftClassPtr<UObject> UAssetDefinition_GameplayAttributeSet::GetAssetClass() const
+TSoftClassPtr<UObject> UAssetDefinition_GameplayActionAttributeSet::GetAssetClass() const
 {
-	return UGameplayAttributeSetBlueprint::StaticClass();
+	return UGameplayActionAttributeSetBlueprint::StaticClass();
 }
 
-TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayAttributeSet::GetAssetCategories() const
+TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayActionAttributeSet::GetAssetCategories() const
 {
 	static const auto Categories = { FAssetCategoryPath(NSLOCTEXT("AssetDefinitions", "GAF_Category", "Gameplay Action Framework")), EAssetCategoryPaths::Blueprint };
 	return Categories;
 }
 
-TWeakPtr<IClassTypeActions> UAssetDefinition_GameplayAttributeSet::GetClassTypeActions(
+TWeakPtr<IClassTypeActions> UAssetDefinition_GameplayActionAttributeSet::GetClassTypeActions(
 	const FAssetData& AssetData) const
 {
 	return Super::GetClassTypeActions(AssetData);
 }
 
-UFactory* UAssetDefinition_GameplayAttributeSet::GetFactoryForBlueprintType(UBlueprint* InBlueprint) const
+UFactory* UAssetDefinition_GameplayActionAttributeSet::GetFactoryForBlueprintType(UBlueprint* InBlueprint) const
 {
-    UGameplayAttributeSetFactory* Factory = NewObject<UGameplayAttributeSetFactory>();
+    UGameplayActionAttributeSetFactory* Factory = NewObject<UGameplayActionAttributeSetFactory>();
 
     if (InBlueprint)
     {
@@ -74,7 +74,7 @@ namespace MenuExtension_GameplayAttributeSet
             AssetToolsModule.Get().CreateUniqueAssetName(ParentBlueprint->GetOutermost()->GetName(), TEXT("_Child"), PackageName, Name);
             const FString PackagePath = FPackageName::GetLongPackagePath(PackageName);
 
-            const UAssetDefinition_GameplayAttributeSet* AssetDefinition = Cast<UAssetDefinition_GameplayAttributeSet>(UAssetDefinitionRegistry::Get()->GetAssetDefinitionForClass(ParentBlueprint->GetClass()));
+            const UAssetDefinition_GameplayActionAttributeSet* AssetDefinition = Cast<UAssetDefinition_GameplayActionAttributeSet>(UAssetDefinitionRegistry::Get()->GetAssetDefinitionForClass(ParentBlueprint->GetClass()));
             if (AssetDefinition)
             {
                 UFactory* Factory = AssetDefinition->GetFactoryForBlueprintType(ParentBlueprint);
@@ -90,14 +90,14 @@ namespace MenuExtension_GameplayAttributeSet
         {
             FToolMenuOwnerScoped OwnerScoped(UE_MODULE_NAME);
 
-            UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayAttributeSetBlueprint::StaticClass());
+            UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayActionAttributeSetBlueprint::StaticClass());
 
             FToolMenuSection& Section = Menu->FindOrAddSection("GetAssetActions");
             Section.AddDynamicEntry(NAME_None, FNewToolMenuSectionDelegate::CreateLambda([](FToolMenuSection& InSection)
             {
                 if (const UContentBrowserAssetContextMenuContext* Context = UContentBrowserAssetContextMenuContext::FindContextWithAssets(InSection))
                 {
-                    if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayAttributeSetBlueprint::StaticClass()))
+                    if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayActionAttributeSetBlueprint::StaticClass()))
                     {
                         const TAttribute<FText> Label = LOCTEXT("AttributeSet_NewDerivedBlueprint", "Create Child Attribute Set");
                         const TAttribute<FText> ToolTip = LOCTEXT("AttributeSet_NewDerivedBlueprintTooltip", "Creates a Child Attribute Set Blueprint based on the current one.");

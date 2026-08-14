@@ -2,7 +2,7 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 #include "GameplayAttributePinCustomization.h"
-#include "GameplayAttributeSet.h"
+#include "GameplayActionAttributeSet.h"
 #include "HAL/Platform.h"
 #include "Widgets/Input/SComboBox.h"
 #include "Widgets/Text/STextBlock.h"
@@ -34,16 +34,16 @@ TSharedRef<SWidget> SGraphPinGameplayAttribute::GetDefaultValueWidget()
 		}
 
 		// Only consider valid GameplayAttributeSet classes
-		if (Class->IsChildOf(UGameplayAttributeSet::StaticClass()) && 
+		if (Class->IsChildOf(UGameplayActionAttributeSet::StaticClass()) && 
 			!Class->HasAnyClassFlags(CLASS_Abstract | CLASS_NewerVersionExists))
 		{
 			for (TFieldIterator<FProperty> PropIt(Class, EFieldIteratorFlags::ExcludeSuper); PropIt; ++PropIt)
 			{
 				FProperty* Property = *PropIt;
 				
-				// Check if the property is FGameplayAttributeData
+				// Check if the property is FGameplayActionAttributeData
 				FStructProperty* StructProp = CastField<FStructProperty>(Property);
-				if (StructProp && StructProp->Struct == FGameplayAttributeData::StaticStruct())
+				if (StructProp && StructProp->Struct == FGameplayActionAttributeData::StaticStruct())
 				{
 					FString DisplayClassName = Class->GetName();
 					DisplayClassName.RemoveFromStart(TEXT("U"));
@@ -73,14 +73,14 @@ TSharedRef<SWidget> SGraphPinGameplayAttribute::GetDefaultValueWidget()
         {
             if (SelectedItem.IsValid() && GraphPinObj)
             {
-                FGameplayAttribute NewAttributeValue;
+                FGameplayActionAttribute NewAttributeValue;
                 if (SelectedItem->Property)
                 {
-                    NewAttributeValue = FGameplayAttribute(SelectedItem->Property);
+                    NewAttributeValue = FGameplayActionAttribute(SelectedItem->Property);
                 }
         
                 FString ValueString;
-                UScriptStruct* StructType = FGameplayAttribute::StaticStruct();
+                UScriptStruct* StructType = FGameplayActionAttribute::StaticStruct();
                 StructType->ExportText(ValueString, &NewAttributeValue, &NewAttributeValue, nullptr, PPF_None, nullptr);
         
                 if (GraphPinObj->GetDefaultAsString() != ValueString)
@@ -108,8 +108,8 @@ TSharedRef<SWidget> SGraphPinGameplayAttribute::GetDefaultValueWidget()
             		return FText::FromString(TEXT("None"));
             	}
             
-            	FGameplayAttribute ParsedAttribute;
-            	UScriptStruct* StructType = FGameplayAttribute::StaticStruct();
+            	FGameplayActionAttribute ParsedAttribute;
+            	UScriptStruct* StructType = FGameplayActionAttribute::StaticStruct();
             	StructType->ImportText(*DefaultString, &ParsedAttribute, nullptr, PPF_None, nullptr, StructType->GetName());
             
             	if (!ParsedAttribute.IsValid())

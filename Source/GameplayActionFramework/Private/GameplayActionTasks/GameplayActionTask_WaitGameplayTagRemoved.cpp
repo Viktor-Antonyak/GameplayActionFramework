@@ -2,6 +2,7 @@
 
 
 #include "GameplayActionTasks/GameplayActionTask_WaitGameplayTagRemoved.h"
+#include "GameplayActionComponent.h"
 
 UGameplayActionTask_WaitGameplayTagRemoved* UGameplayActionTask_WaitGameplayTagRemoved::WaitGameplayTagRemoved
 (

@@ -4,11 +4,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayEffectTypes.generated.h"
+#include "GameplayActionEffectTypes.generated.h"
 
 /** Operations for Attributes */
 UENUM(BlueprintType)
-enum class EGameplayModOp : uint8
+enum class EGameplayActionEffectModOp : uint8
 {
 	Additive,
 	Multiplicative,
@@ -16,7 +16,7 @@ enum class EGameplayModOp : uint8
 };
 
 USTRUCT(BlueprintType)
-struct FActiveGameplayEffectHandle
+struct FActiveGameplayActionEffectHandle
 {
 	GENERATED_BODY()
 
@@ -28,17 +28,17 @@ struct FActiveGameplayEffectHandle
 		return Handle > 0;
 	}
 
-	bool operator==(const FActiveGameplayEffectHandle& Other) const
+	bool operator==(const FActiveGameplayActionEffectHandle& Other) const
 	{
 		return Handle == Other.Handle;
 	}
 
-	bool operator!=(const FActiveGameplayEffectHandle& Other) const
+	bool operator!=(const FActiveGameplayActionEffectHandle& Other) const
 	{
 		return Handle != Other.Handle;
 	}
 
-	friend uint32 GetTypeHash(const FActiveGameplayEffectHandle& InHandle)
+	friend uint32 GetTypeHash(const FActiveGameplayActionEffectHandle& InHandle)
 	{
 		return GetTypeHash(InHandle.Handle);
 	}

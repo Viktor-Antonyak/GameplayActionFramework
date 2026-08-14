@@ -6,21 +6,21 @@
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
 
-#include "GameplayEffectExecutionCalculation.generated.h"
+#include "GameplayActionEffectExecutionCalc.generated.h"
 
-struct FGameplayEffectSpec;
+struct FGameplayActionEffectSpec;
 class UGameplayActionComponent;
 
 /** Base class for custom gameplay effect execution. Override Execute in Blueprint for full control over effect application. */
 UCLASS(Blueprintable, Abstract)
-class GAMEPLAYACTIONFRAMEWORK_API UGameplayEffectExecutionCalculation : public UObject
+class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionEffectExecutionCalc : public UObject
 {
 	GENERATED_BODY()
 
 public:
 	/** Executes custom effect logic. Replaces the standard modifier loop when set on a gameplay effect. */
 	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Effect Execution")
-	void Execute(const FGameplayEffectSpec& EffectSpec, UGameplayActionComponent* Target);
+	void Execute(const FGameplayActionEffectSpec& EffectSpec, UGameplayActionComponent* Target);
 
-	void Execute_Implementation(const FGameplayEffectSpec& EffectSpec, UGameplayActionComponent* Target) {}
+	void Execute_Implementation(const FGameplayActionEffectSpec& EffectSpec, UGameplayActionComponent* Target) {}
 };

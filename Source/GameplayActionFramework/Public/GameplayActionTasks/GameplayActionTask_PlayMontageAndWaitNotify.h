@@ -11,7 +11,7 @@
 class UAnimMontage;
 class USkeletalMeshComponent;
 
-/** @note All delegates must send NotifyName otherwise we won't see him as output pin in task node */
+/** @note All delegates must send NotifyName otherwise we won't see it as output pin in task node */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMontageTaskDelegate, FName, NotifyName);
 
 /**

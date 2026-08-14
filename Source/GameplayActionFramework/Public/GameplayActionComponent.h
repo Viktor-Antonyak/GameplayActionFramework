@@ -4,14 +4,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayEffect.h"
+#include "GameplayActionEffect.h"
 #include "GameplayTagContainer.h"
-#include "GameplayActionActorInfo.h"
-#include "GameplayActionSpec.h"
-#include "GameplayAttributeSet.h"
+#include "GameplayActionTypes.h"
+#include "GameplayActionAttributeSet.h"
 #include "GameplayTasksComponent.h"
 #include "GameplayTagStackableContainer.h"
-#include "ActiveGameplayEffectsContainer.h"
+#include "ActiveGameplayActionEffectsContainer.h"
+#include "GameplayActionInterface.h"
 
 // InstancedStruct.h path differs across engine versions (StructUtils plugin vs engine-native).
 // __has_include avoids hardcoding a specific version boundary, which the maintainer cannot
@@ -33,11 +33,11 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FActionActivated, TSubclassOf<UGamep
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FActionEnded, TSubclassOf<UGameplayAction>, Action, bool, bWasCanceled);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEffectAdded, TSubclassOf<UGameplayEffect>, Effect);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEffectAdded, TSubclassOf<UGameplayActionEffect>, Effect);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEffectRemoved, TSubclassOf<UGameplayEffect>, Effect);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEffectRemoved, TSubclassOf<UGameplayActionEffect>, Effect);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAttributeChanged, const FGameplayAttribute&, Attribute, float, NewValue, float, OldValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAttributeChanged, const FGameplayActionAttribute&, Attribute, float, NewValue, float, OldValue);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FGameplayTagsAdded, const FGameplayTagContainer&, GameplayTags);
 
@@ -50,7 +50,7 @@ struct FAttributeInitializationData
 	GENERATED_BODY()
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Gameplay Attribute")
-	FGameplayAttribute Attribute;
+	FGameplayActionAttribute Attribute;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Gameplay Attribute")
 	float InitialValue = 0.0f;
@@ -128,7 +128,7 @@ public:
 	// --- Tag Management ---
 	
 	/** Returns owned Gameplay Tags from component */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category="Gameplay Action")
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category="Gameplay Action")
 	FGameplayTagContainer GetOwnedGameplayTags() const
 	{
 		return GameplayTagContainer.IsValid() ? GameplayTagContainer.GetAggregatedGameplayTags() : FGameplayTagContainer();
@@ -150,23 +150,23 @@ public:
 	
 	/** Returns specific owned Attribute Set from component */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute")
-	UGameplayAttributeSet* GetAttributeSetByClass(TSubclassOf<UGameplayAttributeSet> AttributeClass) const;
+	UGameplayActionAttributeSet* GetAttributeSetByClass(TSubclassOf<UGameplayActionAttributeSet> AttributeClass) const;
 	
 	/** Returns the float value of an attribute from the attribute sets. */
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
-	float GetAttributeValue(const FGameplayAttribute& Attribute) const;
+	UFUNCTION(BlueprintPure, Category = "Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
+	float GetAttributeValue(const FGameplayActionAttribute& Attribute) const;
 
 	/** Returns the base value of an attribute. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
-	float GetAttributeBaseValue(const FGameplayAttribute& Attribute) const;
+	float GetAttributeBaseValue(const FGameplayActionAttribute& Attribute) const;
 
 	/** Sets the float value of an attribute, triggering Pre/PostChange callbacks. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
-	void SetAttributeValue(const FGameplayAttribute& Attribute, float NewValue);
+	void SetAttributeValue(const FGameplayActionAttribute& Attribute, float NewValue);
 
 	/** Adds an attribute set to this component. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Attribute")
-	UGameplayAttributeSet* AddAttributeSet(TSubclassOf<UGameplayAttributeSet> AttributeSetClass);
+	UGameplayActionAttributeSet* AddAttributeSet(TSubclassOf<UGameplayActionAttributeSet> AttributeSetClass);
 
 	// --- Gameplay Effect Management ---
 
@@ -176,22 +176,22 @@ public:
     * @return Handle to the active effect, or invalid handle if application failed.
     */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
-	FActiveGameplayEffectHandle ApplyGameplayEffectSpecToSelf(const FGameplayEffectSpec& Spec);
+	FActiveGameplayActionEffectHandle ApplyGameplayEffectSpecToSelf(const FGameplayActionEffectSpec& Spec);
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
-	FActiveGameplayEffectHandle ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, int32 Level = 1, AActor* SourceActor = nullptr);
+	FActiveGameplayActionEffectHandle ApplyGameplayEffectToSelf(TSubclassOf<UGameplayActionEffect> Effect, int32 Level = 1, AActor* SourceActor = nullptr);
 
 	/** Removes an active gameplay effect by its handle. */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
-	bool RemoveActiveGameplayEffect(const FActiveGameplayEffectHandle& Handle);
+	bool RemoveActiveGameplayEffect(const FActiveGameplayActionEffectHandle& Handle);
 
 	/** Returns whether the actor has an active gameplay effect spec. */
 	UFUNCTION(BlueprintPure, Category = "Gameplay Effect")
-	bool HasActiveEffectSpecHandle(const FActiveGameplayEffectHandle& Spec);
+	bool HasActiveEffectSpecHandle(const FActiveGameplayActionEffectHandle& Spec);
 
 	/** Returns whether the actor has an active gameplay effect class. */
 	UFUNCTION(BlueprintPure, Category = "Gameplay Effect")
-	bool HasActiveEffect(TSubclassOf<UGameplayEffect> EffectClass);
+	bool HasActiveEffect(TSubclassOf<UGameplayActionEffect> EffectClass);
 	
 	/** 
 	 * Freezes/unfreezes an active effect's modifiers without removing it from the container.
@@ -213,11 +213,11 @@ public:
 	 * @return false if the handle is invalid or already in the requested state.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Effect")
-	bool SetEffectInhibited(const FActiveGameplayEffectHandle& Handle, bool bInhibited);
+	bool SetEffectInhibited(const FActiveGameplayActionEffectHandle& Handle, bool bInhibited);
 
 	/** Returns whether the given active effect is currently inhibited. */
 	UFUNCTION(BlueprintPure, Category = "Gameplay Effect")
-	bool IsEffectInhibited(const FActiveGameplayEffectHandle& Handle) const;
+	bool IsEffectInhibited(const FActiveGameplayActionEffectHandle& Handle) const;
 
 	/** Draws debug info on canvas. */
 	void DisplayDebug(class UCanvas* Canvas, float& YL, float& YPos) const;
@@ -255,8 +255,11 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	/** Caches the owner actor's components into GameplayActionActorInfo. */
 	void InitActorInfo();
+	/** Creates and initializes the default attribute sets. */
 	void InitAttributes();
+	/** Adds and initializes the default actions. */
 	void InitActions();
 
 	FGameplayTagStackableContainer GameplayTagContainer;
@@ -272,7 +275,7 @@ protected:
 	
 	/** Attribute sets to be created on BeginPlay */
 	UPROPERTY(EditAnywhere, Category="Gameplay Attributes")
-	TArray<TSubclassOf<UGameplayAttributeSet>> DefaultAttributes;
+	TArray<TSubclassOf<UGameplayActionAttributeSet>> DefaultAttributes;
 	
 	/** Specific initial values for attributes (applied after set creation) */
 	UPROPERTY(EditAnywhere, Category="Gameplay Attributes")
@@ -284,18 +287,22 @@ protected:
 	
 	/** All active attribute sets managed by this component */
 	UPROPERTY(BlueprintReadOnly, Category="Gameplay Attributes")
-	TArray<UGameplayAttributeSet*> AttributeSets;
+	TArray<UGameplayActionAttributeSet*> AttributeSets;
 	
-	void ApplyEffectModifiers(const FActiveGameplayEffect& Effect);
+	/** Applies the active effect's modifiers to the attribute aggregators and starts its duration/period timers. */
+	void ApplyEffectModifiers(const FActiveGameplayActionEffect& Effect);
 
-	void RevertEffectModifiers(const FActiveGameplayEffect& Effect);
+	/** Removes the active effect's modifier contributions from the aggregators and cancels its timers. */
+	void RevertEffectModifiers(const FActiveGameplayActionEffect& Effect);
 
-	void OnEffectExpired(FActiveGameplayEffectHandle Handle);
+	/** Called when a duration-based effect reaches its end; removes it from the container. */
+	void OnEffectExpired(FActiveGameplayActionEffectHandle Handle);
 
-	void ExecutePeriodicEffect(FActiveGameplayEffectHandle Handle);
+	/** Called on each periodic tick of an effect; re-evaluates its execution. */
+	void ExecutePeriodicEffect(FActiveGameplayActionEffectHandle Handle);
 
 	UPROPERTY()
-	FActiveGameplayEffectsContainer ActiveEffects;
+	FActiveGameplayActionEffectsContainer ActiveEffects;
 
 	int32 NextEffectHandle = 1;
 

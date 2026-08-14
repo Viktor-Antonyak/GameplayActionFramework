@@ -2,21 +2,17 @@
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
 #include "GameplayActionComponent.h"
-#include "Engine/TimerHandle.h"
-#include "Engine/World.h"
-#include "Templates/Tuple.h"
-#include "TimerManager.h"
-#include "GameplayActionSpec.h"
-#include "GameplayAttributeSet.h"
-#include "GameplayAction.h" 
-#include "GameplayEffect.h"
-#include "GameplayEffectMagnitudeCalculation.h"
-#include "GameplayEffectExecutionCalculation.h"
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
+#include "TimerManager.h"
 #include "GameFramework/MovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "UObject/Object.h"
+#include "GameplayActionTypes.h"
+#include "GameplayActionAttributeSet.h"
+#include "GameplayAction.h" 
+#include "GameplayActionEffect.h"
+#include "GameplayActionEffectMagnitudeCalc.h"
+#include "GameplayActionEffectExecutionCalc.h"
 
 
 DEFINE_LOG_CATEGORY(LogGameplayActionComponent);
@@ -58,14 +54,6 @@ void UGameplayActionComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		if (IsValid(TriggeredAction))
 		{
 			TriggeredAction->RequestEndAction();
-		}
-	}
-
-	for (const FGameplayActionSpec& AddedAction : AddedActions)
-	{
-		if (IsValid(AddedAction.Action))
-		{
-			AddedAction.Action->MarkAsGarbage();
 		}
 	}
 
@@ -289,7 +277,7 @@ int32 UGameplayActionComponent::GetOwnedGameplayTagCount(FGameplayTag Tag) const
 }
 
 // --- Attribute Management ---
-UGameplayAttributeSet* UGameplayActionComponent::GetAttributeSetByClass(TSubclassOf<UGameplayAttributeSet> AttributeClass) const
+UGameplayActionAttributeSet* UGameplayActionComponent::GetAttributeSetByClass(TSubclassOf<UGameplayActionAttributeSet> AttributeClass) const
 {
 	if (!AttributeClass) 
 	{
@@ -297,7 +285,7 @@ UGameplayAttributeSet* UGameplayActionComponent::GetAttributeSetByClass(TSubclas
 	    return nullptr;
 	}
 
-	for (UGameplayAttributeSet* Set : AttributeSets)
+	for (UGameplayActionAttributeSet* Set : AttributeSets)
 	{
 		if (IsValid(Set) && Set->IsA(AttributeClass))
 		{
@@ -307,14 +295,14 @@ UGameplayAttributeSet* UGameplayActionComponent::GetAttributeSetByClass(TSubclas
 	return nullptr;
 }
 
-float UGameplayActionComponent::GetAttributeValue(const FGameplayAttribute& Attribute) const
+float UGameplayActionComponent::GetAttributeValue(const FGameplayActionAttribute& Attribute) const
 {
 	if (!Attribute.IsValid())
 	{
 		return 0.0f;
 	}
 
-	const UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(Attribute.GetAttributeSetClass());
+	const UGameplayActionAttributeSet* AttributeSet = GetAttributeSetByClass(Attribute.GetAttributeSetClass());
 
 	if (AttributeSet == nullptr)
 	{
@@ -325,7 +313,7 @@ float UGameplayActionComponent::GetAttributeValue(const FGameplayAttribute& Attr
 	return AttributeSet->GetNumericValue(Attribute);
 }
 
-float UGameplayActionComponent::GetAttributeBaseValue(const FGameplayAttribute& Attribute) const
+float UGameplayActionComponent::GetAttributeBaseValue(const FGameplayActionAttribute& Attribute) const
 {
     if (!Attribute.IsValid())
 	{
@@ -333,7 +321,7 @@ float UGameplayActionComponent::GetAttributeBaseValue(const FGameplayAttribute& 
 		return 0.0f;
 	}
    
-	const UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(Attribute.GetAttributeSetClass());
+	const UGameplayActionAttributeSet* AttributeSet = GetAttributeSetByClass(Attribute.GetAttributeSetClass());
    
 	if (AttributeSet == nullptr)
 	{
@@ -343,7 +331,7 @@ float UGameplayActionComponent::GetAttributeBaseValue(const FGameplayAttribute& 
 	return AttributeSet->GetBaseValue(Attribute);
 }
 
-void UGameplayActionComponent::SetAttributeValue(const FGameplayAttribute& Attribute, float NewValue)
+void UGameplayActionComponent::SetAttributeValue(const FGameplayActionAttribute& Attribute, float NewValue)
 {
 	if (!Attribute.IsValid())
 	{
@@ -351,7 +339,7 @@ void UGameplayActionComponent::SetAttributeValue(const FGameplayAttribute& Attri
 		return;
 	}
 
-	UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(Attribute.GetAttributeSetClass());
+	UGameplayActionAttributeSet* AttributeSet = GetAttributeSetByClass(Attribute.GetAttributeSetClass());
 
 	if (AttributeSet)
 	{
@@ -359,19 +347,19 @@ void UGameplayActionComponent::SetAttributeValue(const FGameplayAttribute& Attri
 	}
 }
 
-UGameplayAttributeSet* UGameplayActionComponent::AddAttributeSet(TSubclassOf<UGameplayAttributeSet> AttributeSetClass)
+UGameplayActionAttributeSet* UGameplayActionComponent::AddAttributeSet(TSubclassOf<UGameplayActionAttributeSet> AttributeSetClass)
 {
 	if (!AttributeSetClass)
 	{
 		return nullptr;
 	}
 	
-	if (UGameplayAttributeSet* ExistingSet = GetAttributeSetByClass(AttributeSetClass))
+	if (UGameplayActionAttributeSet* ExistingSet = GetAttributeSetByClass(AttributeSetClass))
 	{
 		return ExistingSet;
 	}
 
-	UGameplayAttributeSet* NewAttributeSet = NewObject<UGameplayAttributeSet>(GetOwner(), AttributeSetClass);
+	UGameplayActionAttributeSet* NewAttributeSet = NewObject<UGameplayActionAttributeSet>(GetOwner(), AttributeSetClass);
     NewAttributeSet->SetOwningActionComponent(this);
 	AttributeSets.Add(NewAttributeSet);
 	return NewAttributeSet;
@@ -401,7 +389,7 @@ void UGameplayActionComponent::InitActorInfo()
 
 void UGameplayActionComponent::InitAttributes()
 {
-	for (const TSubclassOf<UGameplayAttributeSet>& AttributeClass : DefaultAttributes)
+	for (const TSubclassOf<UGameplayActionAttributeSet>& AttributeClass : DefaultAttributes)
 	{
 		if (AttributeClass)
 		{
@@ -416,7 +404,7 @@ void UGameplayActionComponent::InitAttributes()
 			continue;
 		}
 		
-		UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(InitData.Attribute.GetAttributeSetClass());
+		UGameplayActionAttributeSet* AttributeSet = GetAttributeSetByClass(InitData.Attribute.GetAttributeSetClass());
 
 		if (AttributeSet)
 		{
@@ -440,12 +428,12 @@ void UGameplayActionComponent::InitActions()
 
 // --- Gameplay Effect Management ---
 
-FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToSelf(const FGameplayEffectSpec& Spec)
+FActiveGameplayActionEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToSelf(const FGameplayActionEffectSpec& Spec)
 {
     if (!Spec.Effect) 
     {
         UE_LOG(LogGameplayActionComponent, Error, TEXT("ApplyGameplayEffectSpecToSelf: Spec.Effect is nullptr"));
-        return FActiveGameplayEffectHandle();
+        return FActiveGameplayActionEffectHandle();
     }
 
     const bool HaveAllTags = GameplayTagContainer.HasAllMatchingTags(Spec.Effect->ApplicationRequiredTags);
@@ -454,14 +442,14 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
     
     if (!HaveAllTags || HaveBlockedTags)
     {
-        return FActiveGameplayEffectHandle();
+        return FActiveGameplayActionEffectHandle();
     }
     
-    FActiveGameplayEffectHandle ExistingHandle = ActiveEffects.FindStackable(Spec.Effect, Spec.SourceActor.Get());
+    FActiveGameplayActionEffectHandle ExistingHandle = ActiveEffects.FindStackable(Spec.Effect, Spec.SourceActor.Get());
 
     if (ExistingHandle.IsValid()) 
     {
-    	FActiveGameplayEffect* ExistingEffect = ActiveEffects.Find(ExistingHandle);
+    	FActiveGameplayActionEffect* ExistingEffect = ActiveEffects.Find(ExistingHandle);
     	if (ExistingEffect)
     	{
     		if (ExistingEffect->StackCount >= Spec.Effect->StackLimitCount)
@@ -478,24 +466,24 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
     	}
     }
 
-    FActiveGameplayEffect ActiveGE;
+    FActiveGameplayActionEffect ActiveGE;
     ActiveGE.Handle.Handle = NextEffectHandle++;
     ActiveGE.Spec = Spec;
     ActiveGE.StartTime = GetWorld()->GetTimeSeconds();
-    ActiveGE.Duration = Spec.Effect->DurationPolicy == EGameplayEffectDuration::HasDuration ? Spec.Effect->DurationMagnitude : -1.f;
+    ActiveGE.Duration = Spec.Effect->DurationPolicy == EGameplayActionEffectDuration::HasDuration ? Spec.Effect->DurationMagnitude : -1.f;
     ActiveGE.StackCount = 1;
 
     ApplyEffectModifiers(ActiveGE);
 
     if (Spec.Effect->ExecutionCalculation)
     {
-        UGameplayEffectExecutionCalculation* ExecCDO = Spec.Effect->ExecutionCalculation->GetDefaultObject<UGameplayEffectExecutionCalculation>();
+        UGameplayActionEffectExecutionCalc* ExecCDO = Spec.Effect->ExecutionCalculation->GetDefaultObject<UGameplayActionEffectExecutionCalc>();
         ExecCDO->Execute(Spec, this);
     }
 
     AddOwnedGameplayTags(Spec.Effect->GrantedTags);
 
-    if (Spec.Effect->DurationPolicy == EGameplayEffectDuration::Instant) 
+    if (Spec.Effect->DurationPolicy == EGameplayActionEffectDuration::Instant) 
     {
         return ActiveGE.Handle;
     }
@@ -504,7 +492,7 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
 	
 	OnEffectAdded.Broadcast(Spec.Effect->GetClass());
 
-	if (Spec.Effect->DurationPolicy == EGameplayEffectDuration::HasDuration && Spec.Effect->DurationMagnitude > 0.f)
+	if (Spec.Effect->DurationPolicy == EGameplayActionEffectDuration::HasDuration && Spec.Effect->DurationMagnitude > 0.f)
 	{
 		FTimerDelegate Delegate = FTimerDelegate::CreateUObject(this, &UGameplayActionComponent::OnEffectExpired, ActiveGE.Handle);
 		GetWorld()->GetTimerManager().SetTimer(ActiveGE.DurationHandle, Delegate, Spec.Effect->DurationMagnitude, false);
@@ -523,22 +511,22 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectSpecToS
 	return ActiveGE.Handle;
 }
 
-FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectToSelf(TSubclassOf<UGameplayEffect> Effect, int32 Level, AActor* SourceActor)
+FActiveGameplayActionEffectHandle UGameplayActionComponent::ApplyGameplayEffectToSelf(TSubclassOf<UGameplayActionEffect> Effect, int32 Level, AActor* SourceActor)
 {
     if (!IsValid(Effect))
     {
-        return FActiveGameplayEffectHandle();
+        return FActiveGameplayActionEffectHandle();
     }
  
-    const UGameplayEffect* EffectCDO = Effect->GetDefaultObject<UGameplayEffect>();
+    const UGameplayActionEffect* EffectCDO = Effect->GetDefaultObject<UGameplayActionEffect>();
  
     if (!IsValid(EffectCDO))
     {
         UE_LOG(LogGameplayActionComponent, Error, TEXT("ApplyGameplayEffectToSelf: EffectCDO is nullptr"));
-        return FActiveGameplayEffectHandle();
+        return FActiveGameplayActionEffectHandle();
     }
  
-    FGameplayEffectSpec Spec;
+    FGameplayActionEffectSpec Spec;
     Spec.Effect = EffectCDO;
 	Spec.Level = Level;
 	Spec.SourceActor = SourceActor;
@@ -546,9 +534,9 @@ FActiveGameplayEffectHandle UGameplayActionComponent::ApplyGameplayEffectToSelf(
     return ApplyGameplayEffectSpecToSelf(Spec);
 }
 
-bool UGameplayActionComponent::RemoveActiveGameplayEffect(const FActiveGameplayEffectHandle& Handle)
+bool UGameplayActionComponent::RemoveActiveGameplayEffect(const FActiveGameplayActionEffectHandle& Handle)
 {
-	FActiveGameplayEffect* Effect = ActiveEffects.Find(Handle);
+	FActiveGameplayActionEffect* Effect = ActiveEffects.Find(Handle);
 	
 	if (!Effect)
 	{
@@ -568,7 +556,7 @@ bool UGameplayActionComponent::RemoveActiveGameplayEffect(const FActiveGameplayE
 	
 	RemoveOwnedGameplayTags(Effect->Spec.Effect->GrantedTags);
 
-	TSubclassOf<UGameplayEffect> EffectClass = Effect->Spec.Effect->GetClass();
+	TSubclassOf<UGameplayActionEffect> EffectClass = Effect->Spec.Effect->GetClass();
 
 	ActiveEffects.Remove(Handle);
 
@@ -577,26 +565,26 @@ bool UGameplayActionComponent::RemoveActiveGameplayEffect(const FActiveGameplayE
 	return true;
 }
 
-bool UGameplayActionComponent::HasActiveEffectSpecHandle(const FActiveGameplayEffectHandle& Spec)
+bool UGameplayActionComponent::HasActiveEffectSpecHandle(const FActiveGameplayActionEffectHandle& Spec)
 {
 	return Spec.IsValid() && ActiveEffects.Find(Spec) != nullptr;
 }
 
-bool UGameplayActionComponent::HasActiveEffect(TSubclassOf<UGameplayEffect> EffectClass)
+bool UGameplayActionComponent::HasActiveEffect(TSubclassOf<UGameplayActionEffect> EffectClass)
 {
 	if (!IsValid(EffectClass)) 
 	{
 		return false;
 	}
 	
-	const UGameplayEffect* CDO = EffectClass->GetDefaultObject<UGameplayEffect>();
+	const UGameplayActionEffect* CDO = EffectClass->GetDefaultObject<UGameplayActionEffect>();
 	
 	if (!IsValid(CDO)) 
 	{
 		return false;
 	}
 
-	for (const TTuple<FActiveGameplayEffectHandle, FActiveGameplayEffect>& Pair : ActiveEffects.GetAll())
+	for (const TTuple<FActiveGameplayActionEffectHandle, FActiveGameplayActionEffect>& Pair : ActiveEffects.GetAll())
 	{
 		if (Pair.Value.Spec.Effect == CDO)
 		{
@@ -607,16 +595,16 @@ bool UGameplayActionComponent::HasActiveEffect(TSubclassOf<UGameplayEffect> Effe
 	return false;
 }
 
-bool UGameplayActionComponent::SetEffectInhibited(const FActiveGameplayEffectHandle& Handle, bool bInhibited)
+bool UGameplayActionComponent::SetEffectInhibited(const FActiveGameplayActionEffectHandle& Handle, bool bInhibited)
 {
-	FActiveGameplayEffect* Effect = ActiveEffects.Find(Handle);
+	FActiveGameplayActionEffect* Effect = ActiveEffects.Find(Handle);
 	
 	if (!Effect || Effect->bIsInhibited == bInhibited)
 	{
 		return false;
 	}
 
-	if (Effect->Spec.Effect->DurationPolicy == EGameplayEffectDuration::Instant)
+	if (Effect->Spec.Effect->DurationPolicy == EGameplayActionEffectDuration::Instant)
 	{
 		UE_LOG(LogGameplayActionComponent, Warning, TEXT("SetEffectInhibited: Cannot inhibit an Instant effect, it has no ongoing modifiers to toggle."));
 		
@@ -637,17 +625,17 @@ bool UGameplayActionComponent::SetEffectInhibited(const FActiveGameplayEffectHan
 	return true;
 }
 
-bool UGameplayActionComponent::IsEffectInhibited(const FActiveGameplayEffectHandle& Handle) const
+bool UGameplayActionComponent::IsEffectInhibited(const FActiveGameplayActionEffectHandle& Handle) const
 {
-	const FActiveGameplayEffect* Effect = ActiveEffects.Find(Handle);
+	const FActiveGameplayActionEffect* Effect = ActiveEffects.Find(Handle);
 	return Effect ? Effect->bIsInhibited : false;
 }
 
-void UGameplayActionComponent::ApplyEffectModifiers(const FActiveGameplayEffect& Effect)
+void UGameplayActionComponent::ApplyEffectModifiers(const FActiveGameplayActionEffect& Effect)
 {
-	const FGameplayEffectSpec& Spec = Effect.Spec;
+	const FGameplayActionEffectSpec& Spec = Effect.Spec;
 
-	for (const FGameplayModifierInfo& ModInfo : Spec.Effect->Modifiers)
+	for (const FGameplayActionEffectModifierInfo& ModInfo : Spec.Effect->Modifiers)
 	{
 		if (!ModInfo.Attribute.IsValid())
 		{
@@ -659,7 +647,7 @@ void UGameplayActionComponent::ApplyEffectModifiers(const FActiveGameplayEffect&
 		if (IsValid(ModInfo.MagnitudeCalculation))
 		{
 			
-			UGameplayEffectMagnitudeCalculation* CalcCDO = ModInfo.MagnitudeCalculation->GetDefaultObject<UGameplayEffectMagnitudeCalculation>();
+			UGameplayActionEffectMagnitudeCalc* CalcCDO = ModInfo.MagnitudeCalculation->GetDefaultObject<UGameplayActionEffectMagnitudeCalc>();
 			FinalMagnitude = CalcCDO->CalculateMagnitude(Spec, this);
 		}
 		else if (ModInfo.DataTag.IsValid() && Spec.SetByCallerMagnitudes.Contains(ModInfo.DataTag))
@@ -667,13 +655,13 @@ void UGameplayActionComponent::ApplyEffectModifiers(const FActiveGameplayEffect&
 			FinalMagnitude = Spec.GetSetByCallerMagnitude(ModInfo.DataTag);
 		}
 
-		UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(ModInfo.Attribute.GetAttributeSetClass());
+		UGameplayActionAttributeSet* AttributeSet = GetAttributeSetByClass(ModInfo.Attribute.GetAttributeSetClass());
 		if (!AttributeSet)
 		{
 			continue;
 		}
 
-		if (Spec.Effect->DurationPolicy == EGameplayEffectDuration::Instant || Spec.Effect->Period > 0.0f)
+		if (Spec.Effect->DurationPolicy == EGameplayActionEffectDuration::Instant || Spec.Effect->Period > 0.0f)
 		{
 			const float CurrentValue = AttributeSet->GetBaseValue(ModInfo.Attribute);
 			
@@ -681,15 +669,15 @@ void UGameplayActionComponent::ApplyEffectModifiers(const FActiveGameplayEffect&
 
 			switch (ModInfo.ModifierOp)
 			{
-			case EGameplayModOp::Additive:      
+			case EGameplayActionEffectModOp::Additive:      
 				NewValue += FinalMagnitude;
 				break;
 			
-			case EGameplayModOp::Multiplicative:
+			case EGameplayActionEffectModOp::Multiplicative:
 				NewValue *= FinalMagnitude;
 				break;
 				
-			case EGameplayModOp::Override:
+			case EGameplayActionEffectModOp::Override:
 				NewValue = FinalMagnitude;
 				break;
 			}
@@ -703,16 +691,16 @@ void UGameplayActionComponent::ApplyEffectModifiers(const FActiveGameplayEffect&
 	}
 }
 
-void UGameplayActionComponent::RevertEffectModifiers(const FActiveGameplayEffect& Effect)
+void UGameplayActionComponent::RevertEffectModifiers(const FActiveGameplayActionEffect& Effect)
 {
-	for (const FGameplayModifierInfo& ModInfo : Effect.Spec.Effect->Modifiers)
+	for (const FGameplayActionEffectModifierInfo& ModInfo : Effect.Spec.Effect->Modifiers)
 	{
 		if (!ModInfo.Attribute.IsValid())
 		{
 			continue;
 		}
 
-		UGameplayAttributeSet* AttributeSet = GetAttributeSetByClass(ModInfo.Attribute.GetAttributeSetClass());
+		UGameplayActionAttributeSet* AttributeSet = GetAttributeSetByClass(ModInfo.Attribute.GetAttributeSetClass());
 		
 		if (AttributeSet)
 		{
@@ -721,14 +709,14 @@ void UGameplayActionComponent::RevertEffectModifiers(const FActiveGameplayEffect
 	}
 }
 
-void UGameplayActionComponent::OnEffectExpired(FActiveGameplayEffectHandle Handle)
+void UGameplayActionComponent::OnEffectExpired(FActiveGameplayActionEffectHandle Handle)
 {
     RemoveActiveGameplayEffect(Handle);
 }
 
-void UGameplayActionComponent::ExecutePeriodicEffect(FActiveGameplayEffectHandle Handle)
+void UGameplayActionComponent::ExecutePeriodicEffect(FActiveGameplayActionEffectHandle Handle)
 {
-	FActiveGameplayEffect* Effect = ActiveEffects.Find(Handle);
+	FActiveGameplayActionEffect* Effect = ActiveEffects.Find(Handle);
 	
 	if (!Effect || Effect->bIsInhibited)  
 	{
@@ -772,9 +760,9 @@ void UGameplayActionComponent::DisplayDebug(class UCanvas* Canvas, float& YL, fl
     }
 
     Lines.Add({TEXT("--- Active Effects ---"), FColor::White});
-    for (const TTuple<FActiveGameplayEffectHandle, FActiveGameplayEffect>& Pair : ActiveEffects.GetAll())
+    for (const TTuple<FActiveGameplayActionEffectHandle, FActiveGameplayActionEffect>& Pair : ActiveEffects.GetAll())
     {
-        const FActiveGameplayEffect& Effect = Pair.Value;
+        const FActiveGameplayActionEffect& Effect = Pair.Value;
         if (!Effect.Spec.Effect) { continue; }
 
         FString Info = FString::Printf(TEXT("  %s [Stacks: %d]"), *Effect.Spec.Effect->GetName(), Effect.StackCount);
@@ -804,7 +792,7 @@ void UGameplayActionComponent::DisplayDebug(class UCanvas* Canvas, float& YL, fl
     }
 
     Lines.Add({TEXT("--- Attributes ---"), FColor::White});
-    for (const UGameplayAttributeSet* Set : AttributeSets)
+    for (const UGameplayActionAttributeSet* Set : AttributeSets)
     {
         if (!IsValid(Set)) { continue; }
 
@@ -813,9 +801,9 @@ void UGameplayActionComponent::DisplayDebug(class UCanvas* Canvas, float& YL, fl
         for (TFieldIterator<FProperty> It(Set->GetClass()); It; ++It)
         {
             const FStructProperty* StructProp = CastField<FStructProperty>(*It);
-            if (!StructProp || StructProp->Struct != FGameplayAttributeData::StaticStruct()) { continue; }
+            if (!StructProp || StructProp->Struct != FGameplayActionAttributeData::StaticStruct()) { continue; }
 
-            const FGameplayAttributeData* Data = StructProp->ContainerPtrToValuePtr<FGameplayAttributeData>(const_cast<UGameplayAttributeSet*>(Set));
+            const FGameplayActionAttributeData* Data = StructProp->ContainerPtrToValuePtr<FGameplayActionAttributeData>(const_cast<UGameplayActionAttributeSet*>(Set));
             if (Data)
             {
                 Lines.Add({FString::Printf(TEXT("    %s: Base=%.1f Current=%.1f"), *It->GetName(), Data->GetBaseValue(), Data->GetCurrentValue()), FColor::White});

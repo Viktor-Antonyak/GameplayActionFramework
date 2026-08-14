@@ -16,7 +16,6 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionBlueprint : public UBlueprint
 	GENERATED_BODY()
 
 public:
-	UGameplayActionBlueprint(const FObjectInitializer& ObjectInitializer);
 
 #if WITH_EDITOR
 	// UBlueprint interface

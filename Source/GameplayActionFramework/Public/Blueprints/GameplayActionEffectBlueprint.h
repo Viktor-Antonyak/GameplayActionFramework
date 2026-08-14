@@ -13,7 +13,6 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionEffectBlueprint : public UBluep
 	GENERATED_BODY()
 
 public:
-	UGameplayActionEffectBlueprint(const FObjectInitializer& ObjectInitializer);
 
 #if WITH_EDITOR
 	virtual bool SupportedByDefaultBlueprintFactory() const override { return false; }

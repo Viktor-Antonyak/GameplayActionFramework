@@ -24,61 +24,76 @@ public:
 
 /** Factory for creating new Gameplay Attribute Set Blueprints */
 UCLASS()
-class UGameplayAttributeSetFactory : public UFactory
+class UGameplayActionAttributeSetFactory : public UFactory
 {
 	GENERATED_BODY()
 
 public:
-	UGameplayAttributeSetFactory();
+	UGameplayActionAttributeSetFactory();
 
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 	virtual bool CanCreateNew() const override { return true; }
 	
-	TSubclassOf<class UGameplayAttributeSet> ParentClass = nullptr;
+	TSubclassOf<class UGameplayActionAttributeSet> ParentClass = nullptr;
 };
 
 /** Factory for creating new Gameplay Effects Blueprints */
 UCLASS()
-class UGameplayEffectFactory : public UFactory
+class UGameplayActionEffectFactory : public UFactory
 {
 	GENERATED_BODY()
 
 public:
-	UGameplayEffectFactory();
+	UGameplayActionEffectFactory();
 
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 	virtual bool CanCreateNew() const override { return true; }
 
-	TSubclassOf<class UGameplayEffect> ParentClass = nullptr;
+	TSubclassOf<class UGameplayActionEffect> ParentClass = nullptr;
 };
 
 /** Factory for creating new Gameplay Effect Magnitude Calculation Blueprints */
 UCLASS()
-class UGameplayEffectMagnitudeCalculationFactory : public UFactory
+class UGameplayActionEffectMagnitudeCalculationFactory : public UFactory
 {
 	GENERATED_BODY()
 
 public:
-	UGameplayEffectMagnitudeCalculationFactory();
+	UGameplayActionEffectMagnitudeCalculationFactory();
 
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 	virtual bool CanCreateNew() const override { return true; }
 
-	TSubclassOf<class UGameplayEffectMagnitudeCalculation> ParentClass = nullptr;
+	TSubclassOf<class UGameplayActionEffectMagnitudeCalc> ParentClass = nullptr;
 };
 
 /** Factory for creating new Gameplay Effect Execution Calculation Blueprints */
 UCLASS()
-class UGameplayEffectExecutionCalculationFactory : public UFactory
+class UGameplayActionEffectExecutionCalculationFactory : public UFactory
 {
 	GENERATED_BODY()
 
 public:
-	UGameplayEffectExecutionCalculationFactory();
+	UGameplayActionEffectExecutionCalculationFactory();
 
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 	virtual bool CanCreateNew() const override { return true; }
 
-	TSubclassOf<class UGameplayEffectExecutionCalculation> ParentClass = nullptr;
+	TSubclassOf<class UGameplayActionEffectExecutionCalc> ParentClass = nullptr;
+};
+
+/** Factory for creating new Gameplay Action Fragment Blueprints */
+UCLASS()
+class UGameplayActionFragmentFactory : public UFactory
+{
+	GENERATED_BODY()
+
+public:
+	UGameplayActionFragmentFactory();
+
+	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
+	virtual bool CanCreateNew() const override { return true; }
+
+	TSubclassOf<class UGameplayActionFragment> ParentClass = nullptr;
 };
 

@@ -5,10 +5,10 @@
 
 #include "CoreMinimal.h"
 #include "Script/AssetDefinition_Blueprint.h"
-#include "AssetDefinition_GameplayEffect.generated.h"
+#include "AssetDefinition_GameplayActionEffect.generated.h"
 
 UCLASS()
-class UAssetDefinition_GameplayEffect : public UAssetDefinition_Blueprint
+class UAssetDefinition_GameplayActionEffect : public UAssetDefinition_Blueprint
 {
 	GENERATED_BODY()
 

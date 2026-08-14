@@ -3,6 +3,7 @@
 
 
 #include "GameplayActionTasks/GameplayActionTask_WaitGameplayTagAdded.h"
+#include "GameplayActionComponent.h"
 
 UGameplayActionTask_WaitGameplayTagAdded* UGameplayActionTask_WaitGameplayTagAdded::WaitGameplayTagAdded
 (

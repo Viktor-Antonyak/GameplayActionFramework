@@ -5,10 +5,10 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTask.h"
-#include "GameplayActionInterface.h"
-#include "GameplayAction.h"
-#include "GameplayActionComponent.h"
 #include "GameplayActionTask.generated.h"
+
+class UGameplayAction;
+class UGameplayActionComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogGameplayActionTask, Log, All);
 
@@ -25,53 +25,24 @@ public:
 	template<class TaskType>
 	static TaskType* NewGameplayActionTask(UObject* WorldContextObject)
 	{
-		if (!IsValid(WorldContextObject))
-		{
-			return nullptr;
-		}
-
-		if (!WorldContextObject->Implements<UGameplayActionInterface>())
-		{
-			return nullptr;
-		}
-		
-		UGameplayActionComponent* OwnerComponent = IGameplayActionInterface::Execute_GetGameplayActionComponent(WorldContextObject);
-		
-		IGameplayTaskOwnerInterface* OwnerInterface;
-
-		if (UGameplayAction* Action = Cast<UGameplayAction>(WorldContextObject))
-		{
-			OwnerInterface = Action;
-		}
-		else
-		{
-			OwnerInterface = OwnerComponent;
-		}
-
-		if (!OwnerComponent || !OwnerInterface)
-		{
-			UE_LOG(LogGameplayActionTask, Log, TEXT("Could not resolve a valid task owner from %s"), *WorldContextObject->GetName())
-			
-			return nullptr;
-		}
-		
-		TaskType* NewTask = NewObject<TaskType>();
-		NewTask->InitTask(*OwnerInterface, NewTask->GetPriority());
-		NewTask->CachedGameplayActionComponent = OwnerComponent;
-		NewTask->CachedGameplayAction = Cast<UGameplayAction>(WorldContextObject);
-		return NewTask;
+		return Cast<TaskType>(NewTaskInternal(TaskType::StaticClass(), WorldContextObject));
 	}
 	
 protected:
+	
+	static UGameplayActionTask* NewTaskInternal(UClass* TaskClass, UObject* WorldContextObject);
 	
 	UGameplayActionComponent* GetActionComponent() const
 	{
 		return CachedGameplayActionComponent.Get();
 	}
 	
-	UPROPERTY()
+	UGameplayAction* GetGameplayAction() const
+	{
+		return CachedGameplayAction.Get();
+	}
+	
 	TWeakObjectPtr<UGameplayActionComponent> CachedGameplayActionComponent;
 	
-	UPROPERTY()
 	TWeakObjectPtr<UGameplayAction> CachedGameplayAction;
 };

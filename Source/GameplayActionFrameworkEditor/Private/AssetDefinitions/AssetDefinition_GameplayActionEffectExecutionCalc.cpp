@@ -1,36 +1,36 @@
 // Copyright (c) 2026 Viktor Antonyak. All Rights Reserved.
 // Licensed under the MIT License. See LICENSE file in the project root for full license information.
 
-#include "AssetDefinitions/AssetDefinition_GameplayEffectMagnitudeCalculation.h"
+#include "AssetDefinitions/AssetDefinition_GameplayActionEffectExecutionCalc.h"
 
 #include "AssetDefinitionRegistry.h"
 #include "AssetToolsModule.h"
 #include "ContentBrowserMenuContexts.h"
 #include "ContentBrowserModule.h"
-#include "Blueprints/GameplayEffectMagnitudeCalcBlueprint.h"
+#include "Blueprints/GameplayActionEffectExecutionCalcBlueprint.h"
 #include "GameplayActionFrameworkFactories.h"
 #include "IContentBrowserSingleton.h"
 #include "Blueprint/BlueprintSupport.h"
 #include "Kismet2/KismetEditorUtilities.h"
 
-#define LOCTEXT_NAMESPACE "AssetDefinition_GameplayEffectMagnitudeCalculation"
+#define LOCTEXT_NAMESPACE "AssetDefinition_GameplayEffectExecutionCalculation"
 
-FText UAssetDefinition_GameplayEffectMagnitudeCalculation::GetAssetDisplayName() const
+FText UAssetDefinition_GameplayActionEffectExecutionCalc::GetAssetDisplayName() const
 {
-	return FText::FromString(TEXT("Gameplay Effect Magnitude Calculation"));
+	return FText::FromString(TEXT("Gameplay Action Effect Execution Calculation"));
 }
 
-FLinearColor UAssetDefinition_GameplayEffectMagnitudeCalculation::GetAssetColor() const
+FLinearColor UAssetDefinition_GameplayActionEffectExecutionCalc::GetAssetColor() const
 {
-	return FLinearColor(0.8f, 0.4f, 1.0f);
+	return FLinearColor(1.0f, 0.6f, 0.2f);
 }
 
-TSoftClassPtr<UObject> UAssetDefinition_GameplayEffectMagnitudeCalculation::GetAssetClass() const
+TSoftClassPtr<UObject> UAssetDefinition_GameplayActionEffectExecutionCalc::GetAssetClass() const
 {
-	return UGameplayEffectMagnitudeCalcBlueprint::StaticClass();
+	return UGameplayActionEffectExecutionCalcBlueprint::StaticClass();
 }
 
-TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayEffectMagnitudeCalculation::GetAssetCategories() const
+TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayActionEffectExecutionCalc::GetAssetCategories() const
 {
 	static const auto Categories = {
 		FAssetCategoryPath(NSLOCTEXT("AssetDefinitions", "GAF_Category", "Gameplay Action Framework")),
@@ -39,14 +39,14 @@ TConstArrayView<FAssetCategoryPath> UAssetDefinition_GameplayEffectMagnitudeCalc
 	return Categories;
 }
 
-TWeakPtr<IClassTypeActions> UAssetDefinition_GameplayEffectMagnitudeCalculation::GetClassTypeActions(const FAssetData& AssetData) const
+TWeakPtr<IClassTypeActions> UAssetDefinition_GameplayActionEffectExecutionCalc::GetClassTypeActions(const FAssetData& AssetData) const
 {
 	return Super::GetClassTypeActions(AssetData);
 }
 
-UFactory* UAssetDefinition_GameplayEffectMagnitudeCalculation::GetFactoryForBlueprintType(UBlueprint* InBlueprint) const
+UFactory* UAssetDefinition_GameplayActionEffectExecutionCalc::GetFactoryForBlueprintType(UBlueprint* InBlueprint) const
 {
-	UGameplayEffectMagnitudeCalculationFactory* Factory = NewObject<UGameplayEffectMagnitudeCalculationFactory>();
+	UGameplayActionEffectExecutionCalculationFactory* Factory = NewObject<UGameplayActionEffectExecutionCalculationFactory>();
 
 	if (InBlueprint)
 	{
@@ -60,7 +60,7 @@ UFactory* UAssetDefinition_GameplayEffectMagnitudeCalculation::GetFactoryForBlue
 // Menu Extension
 //----------------------------------
 
-namespace MenuExtension_GameplayEffectMagnitudeCalculation
+namespace MenuExtension_GameplayEffectExecutionCalculation
 {
 	static void ExecuteNewDerivedBlueprint(const FToolMenuContext& MenuContext, const FAssetData SelectedBlueprintPtr)
 	{
@@ -79,7 +79,7 @@ namespace MenuExtension_GameplayEffectMagnitudeCalculation
 			AssetToolsModule.Get().CreateUniqueAssetName(ParentBlueprint->GetOutermost()->GetName(), TEXT("_Child"), PackageName, Name);
 			const FString PackagePath = FPackageName::GetLongPackagePath(PackageName);
 
-			const UAssetDefinition_GameplayEffectMagnitudeCalculation* AssetDefinition = Cast<UAssetDefinition_GameplayEffectMagnitudeCalculation>(UAssetDefinitionRegistry::Get()->GetAssetDefinitionForClass(ParentBlueprint->GetClass()));
+			const UAssetDefinition_GameplayActionEffectExecutionCalc* AssetDefinition = Cast<UAssetDefinition_GameplayActionEffectExecutionCalc>(UAssetDefinitionRegistry::Get()->GetAssetDefinitionForClass(ParentBlueprint->GetClass()));
 			if (AssetDefinition)
 			{
 				UFactory* Factory = AssetDefinition->GetFactoryForBlueprintType(ParentBlueprint);
@@ -95,23 +95,23 @@ namespace MenuExtension_GameplayEffectMagnitudeCalculation
 		{
 			FToolMenuOwnerScoped OwnerScoped(UE_MODULE_NAME);
 
-			UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayEffectMagnitudeCalcBlueprint::StaticClass());
+			UToolMenu* Menu = UE::ContentBrowser::ExtendToolMenu_AssetContextMenu(UGameplayActionEffectExecutionCalcBlueprint::StaticClass());
 
 			FToolMenuSection& Section = Menu->FindOrAddSection("GetAssetActions");
 			Section.AddDynamicEntry(NAME_None, FNewToolMenuSectionDelegate::CreateLambda([](FToolMenuSection& InSection)
 			{
 				if (const UContentBrowserAssetContextMenuContext* Context = UContentBrowserAssetContextMenuContext::FindContextWithAssets(InSection))
 				{
-					if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayEffectMagnitudeCalcBlueprint::StaticClass()))
+					if (const FAssetData* SelectedAssetPtr = Context->GetSingleSelectedAssetOfType(UGameplayActionEffectExecutionCalcBlueprint::StaticClass()))
 					{
-						const TAttribute<FText> Label = LOCTEXT("MagnitudeCalc_NewDerivedBlueprint", "Create Child Magnitude Calculation");
-						const TAttribute<FText> ToolTip = LOCTEXT("MagnitudeCalc_NewDerivedBlueprintTooltip", "Creates a Child Gameplay Effect Magnitude Calculation Blueprint based on the current one.");
+						const TAttribute<FText> Label = LOCTEXT("ExecCalc_NewDerivedBlueprint", "Create Child Execution Calculation");
+						const TAttribute<FText> ToolTip = LOCTEXT("ExecCalc_NewDerivedBlueprintTooltip", "Creates a Child Gameplay Effect Execution Calculation Blueprint based on the current one.");
 						const FSlateIcon Icon = FSlateIcon(FAppStyle::GetAppStyleSetName(), "ClassIcon.Blueprint");
 
 						FToolUIAction DeriveNewBlueprint;
 						DeriveNewBlueprint.ExecuteAction = FToolMenuExecuteAction::CreateStatic(&ExecuteNewDerivedBlueprint, *SelectedAssetPtr);
 
-						InSection.AddMenuEntry("CreateChildMagnitudeCalculation", Label, ToolTip, Icon, DeriveNewBlueprint);
+						InSection.AddMenuEntry("CreateChildExecutionCalculation", Label, ToolTip, Icon, DeriveNewBlueprint);
 					}
 				}
 			}));

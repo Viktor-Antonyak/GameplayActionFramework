@@ -7,6 +7,7 @@
 #include "Curves/CurveFloat.h"
 #include "GameFramework/Actor.h"
 
+
 UGameplayActionTask_MoveConstant::UGameplayActionTask_MoveConstant()
 {
 	bTickingTask = true;
@@ -37,9 +38,7 @@ UGameplayActionTask_MoveConstant* UGameplayActionTask_MoveConstant::MoveConstant
 
 void UGameplayActionTask_MoveConstant::Activate()
 {
-	UGameplayActionComponent* Comp = GetActionComponent();
-	
-	if (!IsValid(Comp))
+	if (!IsValid(GetAvatarActor()))
 	{
 		EndTask();
 		
