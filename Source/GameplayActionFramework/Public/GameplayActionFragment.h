@@ -10,7 +10,7 @@
 /**
  * Gameplay Action Fragment is object with optional custom data for Data oriented approach
  */
-UCLASS(Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
+UCLASS(Abstract, Blueprintable, BlueprintType, EditInlineNew, DefaultToInstanced)
 class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionFragment : public UObject
 {
 	GENERATED_BODY()
