@@ -43,7 +43,7 @@ void FGameplayActionFrameworkEditorModule::StartupModule()
 	FEdGraphUtilities::RegisterVisualPinFactory(AttributePinFactory);
 	
 	PropertyModule.RegisterCustomPropertyTypeLayout(
-		"GameplayAttribute",
+		"GameplayActionAttribute",
 		FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FGameplayAttributeCustomization::MakeInstance)
 	);
 }
@@ -53,7 +53,7 @@ void FGameplayActionFrameworkEditorModule::ShutdownModule()
 	if (FModuleManager::Get().IsModuleLoaded("PropertyEditor"))
 	{
 		FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
-		PropertyModule.UnregisterCustomPropertyTypeLayout("GameplayAttribute");
+		PropertyModule.UnregisterCustomPropertyTypeLayout("GameplayActionAttribute");
 	}
 
 	if (AttributePinFactory.IsValid())
