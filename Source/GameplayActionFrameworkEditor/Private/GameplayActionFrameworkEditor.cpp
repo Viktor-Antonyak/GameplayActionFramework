@@ -23,7 +23,7 @@ public:
 		if (Pin->PinType.PinCategory == UEdGraphSchema_K2::PC_Struct)
 		{
 			const UScriptStruct* PinStruct = Cast<UScriptStruct>(Pin->PinType.PinSubCategoryObject.Get());
-			if (PinStruct && PinStruct->GetName() == TEXT("GameplayAttribute"))
+			if (PinStruct && PinStruct->GetName() == TEXT("GameplayActionAttribute"))
 			{
 				return SNew(SGraphPinGameplayAttribute, Pin);
 			}
