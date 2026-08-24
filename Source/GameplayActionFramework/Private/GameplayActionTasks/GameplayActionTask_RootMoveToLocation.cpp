@@ -37,7 +37,6 @@ UGameplayActionTask_RootMoveToLocation* UGameplayActionTask_RootMoveToLocation::
 		NewTask->bAllowGravity = bEnableGravity;
 		NewTask->FinishClampVelocity = FinishVelocityClamp;
 		NewTask->FinishSetVelocity = FinishVelocitySet;
-		NewTask->ReadyForActivation();
 	}
 	
 	return NewTask;

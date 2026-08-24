@@ -23,7 +23,7 @@
 
 #include "GameplayAction.generated.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogGameplayAction, Log, All);
+GAMEPLAYACTIONFRAMEWORK_API DECLARE_LOG_CATEGORY_EXTERN(LogGameplayAction, Log, All);
 
 class UGameplayActionComponent;
 
@@ -46,11 +46,11 @@ enum class EGameplayActionType : uint8
 UENUM(BlueprintType)
 enum class EGameplayActionCancelPolicy : uint8
 {
-	/** Activation fails if any targeted action cannot be canceled */
-	Block,
+    /** Activation fails if any targeted action cannot be canceled */
+    Block,
 
-	/** Attempts to cancel but activates regardless of failures */
-	IgnoreFailed
+    /** Attempts to cancel but activates regardless of failures */
+    IgnoreFailed
 };
 
 /**
@@ -72,7 +72,7 @@ struct FGameplayActionInfoTags
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Tags")
 	FGameplayTagContainer RequireTags;
-
+	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Tags")
 	FGameplayTagContainer BlockedByTags;
 
@@ -89,7 +89,7 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayAction : public UObject, public IGame
 	GENERATED_BODY()
 
 public:
-
+	
 	UGameplayAction();
 
 	/** Initializes the action with actor info and level. */
@@ -104,41 +104,43 @@ public:
 	/** Used for Triggered actions. Primarily used in Gameplay Action Component. */
 	bool RequestTriggerAction(const TSharedPtr<FGameplayActionActorInfo>& ActorInfo, int32 ActionLevel = -1, const FInstancedStruct& Payload = FInstancedStruct());
 
+	void RequestReleaseInputID();
+	
 	/** Used to end the action. Primarily used in Gameplay Action Component. */
 	void RequestEndAction();
 
 	/** Used to cancel the action. Primarily used in Gameplay Action Component. */
 	bool RequestCancelAction();
-
+	
 public:
-
+	
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
-	bool IsActive() const
+	bool IsActive() const 
 	{
 		return bIsActive;
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
-	bool CanBeCanceled() const
+	bool CanBeCanceled() const 
 	{
 		return bCanBeCanceled;
 	}
-
-	FGameplayTag GetActionTag() const
+	
+	FGameplayTag GetActionTag() const 
 	{
 		return GameplayActionInfoTags.GameplayActionTag;
 	}
-	FGameplayTagContainer GetBlockOtherActionsTags() const
+	FGameplayTagContainer GetBlockOtherActionsTags() const 
 	{
 		return GameplayActionInfoTags.BlockOtherActions;
 	}
-	FGameplayTagContainer GetCancelOtherActionsTags() const
+	FGameplayTagContainer GetCancelOtherActionsTags() const 
 	{
 		return GameplayActionInfoTags.CancelOtherActions;
 	}
-
+	
 public:
-
+	
 	// Start of IGameplayTaskOwnerInterface
 	virtual UGameplayTasksComponent* GetGameplayTasksComponent(const UGameplayTask& Task) const override;
 	virtual AActor* GetGameplayTaskOwner(const UGameplayTask* Task) const override;
@@ -152,11 +154,11 @@ public:
 	{
 		return GetActionComponent();
 	}
-
+	
 	virtual UWorld* GetWorld() const override;
-
+	
 protected:
-
+	
 	/** Fires after action initialization, can be used for custom data initialization */
 	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action", meta=(BlueprintInternalUseOnly, ForceAsFunction))
 	void OnActionInitialize();
@@ -164,7 +166,7 @@ protected:
 	/** Fires after action deinitialization, must be used if action have custom initialization data */
 	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action", meta=(BlueprintInternalUseOnly, ForceAsFunction))
 	void OnActionDeinitialize();
-
+	
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
 	void EndAction();
 
@@ -180,11 +182,11 @@ protected:
 	bool CommitCooldown(int32 CooldownLevel = 1);
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
-	void SetCanBeCanceled(bool bNewCanBeCanceled)
+	void SetCanBeCanceled(bool bNewCanBeCanceled) 
 	{
 		bCanBeCanceled = bNewCanBeCanceled;
 	}
-
+	
 	/** Called when the action is executed (Standard actions). */
 	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action")
 	void OnExecuteAction();
@@ -192,7 +194,11 @@ protected:
 	/** Event called when action is triggered with optional payload (Triggered actions). */
 	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action")
 	void OnActionTriggered(const FInstancedStruct& Payload);
-
+	
+	/** Called when Action Input ID is released */
+	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action")
+	void OnInputIDReleased();
+	
 	/** Called when the action ends. */
 	UFUNCTION(BlueprintNativeEvent, Category = "Gameplay Action")
 	void OnEndAction(bool bWasCanceled = false);
@@ -202,15 +208,15 @@ protected:
 	bool CanExecuteAction() const;
 
 protected:
-
+	
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Action Info")
-	int32 GetActionLevel() const
+	int32 GetActionLevel() const 
 	{
 		return CachedActionLevel;
 	}
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Action Info")
-	AActor* GetOwnerActor() const
+	AActor* GetOwnerActor() const 
 	{
 		return CachedActorInfo ? CachedActorInfo->OwnerActor.Get() : nullptr;
 	}
@@ -219,19 +225,19 @@ protected:
 	TArray<USkeletalMeshComponent*> GetSkeletalMeshComponents() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Action Info")
-	UMovementComponent* GetMovementComponent() const
-	{
-		return CachedActorInfo ? CachedActorInfo->MovementComponent.Get() : nullptr;
+	UMovementComponent* GetMovementComponent() const 
+	{ 
+		return CachedActorInfo ? CachedActorInfo->MovementComponent.Get() : nullptr; 
 	}
-
+	
 	UFUNCTION(BlueprintCallable, Category = "Gameplay Action | Action Info")
-	UGameplayActionComponent* GetActionComponent() const
-	{
-		return CachedActorInfo ? CachedActorInfo->ActionComponent.Get() : nullptr;
+	UGameplayActionComponent* GetActionComponent() const 
+	{ 
+		return CachedActorInfo ? CachedActorInfo->ActionComponent.Get() : nullptr; 
 	}
-
+	
 protected:
-
+	
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Gameplay Action Info", meta=(ShowOnlyInnerProperties))
 	FGameplayActionInfoTags GameplayActionInfoTags;
 
@@ -270,23 +276,23 @@ private:
 
 	/** Returns whether the action's CostEffect can be applied successfully. */
 	bool CanApplyCost() const;
-
+	
 	/** Ends all gameplay tasks owned by this action and clears the list. */
 	void EndAllGameplayTasks();
-
+	
 private:
 
 	int32 CachedActionLevel = -1;
 
 	bool bIsActive = false;
-
+	
 	bool bCanBeCanceled = true;
-
+	
 	UPROPERTY()
 	TArray<TObjectPtr<UGameplayTask>> GameplayTasks;
 
 	TSharedPtr<FGameplayActionActorInfo> CachedActorInfo;
-
+	
 	friend class UGameplayActionComponent;
 	friend class UGameplayActionFactory;
 };

@@ -27,7 +27,6 @@ UGameplayActionTask_PlayMontageAndWaitNotify* UGameplayActionTask_PlayMontageAnd
 		NewTask->MontageStartSection = StartSection;
 		NewTask->MontageStartTimeSeconds = StartTimeSeconds;
 		NewTask->bStopAtEnd = bStopMontageAtEnd;
-		NewTask->ReadyForActivation();
 	}
 	
 	return NewTask;

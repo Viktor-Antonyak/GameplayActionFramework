@@ -18,6 +18,8 @@ static void OnGAFDebugToggle()
 {
 	GAFDebugEnabled = !GAFDebugEnabled;
 
+	UE_LOG(LogTemp, Warning, TEXT("DebugGAF is deprecated since GAF 1.6 and will be removed in a future release, use the Gameplay Debugger 'GAF' category instead."));
+
 	static IConsoleVariable* FlagVar = IConsoleManager::Get().FindConsoleVariable(TEXT("ShowFlag.GAF"));
 	if (FlagVar)
 	{
@@ -27,7 +29,7 @@ static void OnGAFDebugToggle()
 
 static FAutoConsoleCommand GAFDebugToggleCmd(
 	TEXT("DebugGAF"),
-	TEXT("Toggle GameplayActionFramework debug visualization"),
+	TEXT("(Deprecated) Toggle GameplayActionFramework debug visualization. Use the Gameplay Debugger 'GAF' category instead."),
 	FConsoleCommandDelegate::CreateStatic(&OnGAFDebugToggle)
 );
 

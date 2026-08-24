@@ -13,7 +13,7 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 - **Tags** — Stackable `FGameplayTag` system with reference counting (quantity), application requirements, blocked tags, and granted tags
 - **Init Actions** — Actions auto-initialized on BeginPlay from the component's array, no Blueprint graph needed
 - **Blueprint Library** — Helper functions for applying effects, managing tags, and reading attributes from any actor
-- **Debug Visualization** — `DebugGAF` console command to inspect actions, effects, tags, and attributes on the actor under your crosshair
+- **Debug Visualization** — Gameplay Debugger `GAF` category (plus the deprecated `DebugGAF` on-screen overlay) to inspect actions, effects, tags, and attributes
 
 ## Quick Start
 
@@ -54,6 +54,8 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 3. **Triggered actions** — `TriggerActionByClass` creates a new instance, calls `RequestTriggerAction` with a payload (`FInstancedStruct`), executes once, and is destroyed on end.
 
 4. **Ending** — `RequestEndAction` calls `EndAction`: removes from active list, removes grant tags, applies cooldown effect if set, calls `OnEndAction(bool bWasCanceled)`.
+
+5. **Input release** — `ReleaseInputID(InputID)` calls `RequestReleaseInputID`, which fires `OnInputIDReleased` if the action is currently active. Unlike earlier versions it does **not** end the action — handle press/release semantics (e.g. hold-to-channel) in `OnExecuteAction` / `OnInputIDReleased`.
 
 ### Init Actions
 
@@ -122,6 +124,26 @@ UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attributes")
 FGameplayActionAttributeData Health;
 UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Attributes")
 FGameplayActionAttributeData Mana;
+```
+
+Use the `GAMEPLAY_ACTION_ATTRIBUTE_ACCESSORS(ClassName, PropertyName)` macro (below the attribute declarations) to generate GAS-style accessors. A plain `GAMEPLAY_ACTION_ATTRIBUTE_ACCESSOR` generates only the static attribute lookup:
+
+```cpp
+GAMEPLAY_ACTION_ATTRIBUTE_ACCESSORS(UMyAttributeSet, Health)
+GAMEPLAY_ACTION_ATTRIBUTE_ACCESSORS(UMyAttributeSet, Mana)
+```
+
+For each attribute this generates:
+
+```cpp
+// from GAMEPLAY_ACTION_ATTRIBUTE_ACCESSOR:
+static FGameplayActionAttribute GetHealthAttribute();  // cached FindFProperty lookup
+
+// additionally from GAMEPLAY_ACTION_ATTRIBUTE_ACCESSORS:
+float GetHealth() const;        // CurrentValue
+float GetBaseHealth() const;    // BaseValue
+void  SetHealth(float NewVal);  // SetNumericValue — Pre/Post callbacks + broadcast
+void  InitHealth(float NewVal); // InitNumericValue — no callbacks (setup only)
 ```
 
 BaseValue is the persistent source of truth; CurrentValue is the runtime value. Duration/Infinite effects never touch BaseValue — they contribute through the aggregator and CurrentValue is recomputed from `BaseValue + modifiers`. Instant and Periodic effects mutate BaseValue directly (via `SetBaseValue`), and CurrentValue is recalculated after each change.
@@ -234,7 +256,7 @@ These complement the native `InitializeAction` / `DeinitializeAction` overrides 
 
 ### Gameplay Action Fragments
 
-`UGameplayActionFragment` is a `UObject` base class (child Blueprints can be edited in-place via `EditInlineNew` / `DefaultToInstanced`) for the data-oriented approach — child Blueprints hold optional custom data that can be attached to a `FGameplayActionFragmentsHandle`. Use `FindFragment(Handle, FragmentClass, IsFound)` (Blueprint library, with `ExpandBoolAsExecs`) to look up a fragment and get its data:
+`UGameplayActionFragment` is an abstract `UObject` base class (child Blueprints can be edited in-place via `EditInlineNew` / `DefaultToInstanced`) for the data-oriented approach — child Blueprints hold optional custom data that can be attached to a `FGameplayActionFragmentsHandle`. Use `FindFragment(Handle, FragmentClass, IsFound)` (Blueprint library, with `ExpandBoolAsExecs`) to look up a fragment and get its data:
 
 ```cpp
 FGameplayActionFragmentsHandle Handle;
@@ -261,7 +283,7 @@ This keeps gameplay data separate from behaviour and lets a single action read d
 | `UGameplayActionFragment` | Object base for the data-oriented approach — optional custom data queried via `FindFragment` |
 | `IGameplayActionInterface` | Interface for actors; exposes `GetGameplayActionComponent()` |
 | `UGameplayActionTask` | Base for Blueprint tasks running on the component — waiting for events, movement, and montage playback |
-| `UGameplayActionFrameworkDebugSubsystem` | World subsystem; renders debug info toggled by `DebugGAF` |
+| `FGAFGameplayDebuggerCategory` | Gameplay Debugger category (`GAF`) rendering live action/effect/tag/attribute data; non-Shipping builds only |
 
 ## Notes
 
@@ -274,15 +296,16 @@ This keeps gameplay data separate from behaviour and lets a single action read d
 
 ## Debug Visualization
 
-Type `DebugGAF` in the console to toggle on‑screen debug info. The system performs a line trace from the camera and displays data for the actor under the crosshair. If nothing is hit, it falls back to your own pawn.
+Since **1.6** debug info is exposed through the engine's built-in **Gameplay Debugger**: press `'` (apostrophe) in-game and pick the **GAF** category. It shows data for the actor currently replicated/selected in the debugger (line-traced under your crosshair by default), laid out in a grid:
 
-Shows:
 - **Grant Actions** — list of registered actions; green = currently active, white = inactive
-- **Triggered Actions** — running one‑shot actions (always green)
-- **Active Effects** — effect name, stack count, remaining time (or "Infinite"); inhibited effects shown in silver with an `[INHIBITED]` marker
+- **Triggered Actions** — running one‑shot actions
+- **Active Effects** — effect name, stack count, remaining time (or "Infinite"); inhibited effects marked `[INHIBITED]`
 - **Owned Tags** — all gameplay tags on the actor
 - **Attributes** — per attribute set: each attribute with `Base=` and `Current=`
 
-The overlay is drawn with a translucent background panel for readability.
+Implementation: `FGAFGameplayDebuggerCategory` (in `GameplayActionFrameworkDebugger.h`) registers itself as a `"GAF"` category via `IGameplayDebugger::RegisterCategory` on module startup and is compiled only for non-Shipping builds (`WITH_GAMEPLAY_DEBUGGER`). The component exposes read-only accessors (`GetAddedActions`, `GetActiveEffects`, `GetAttributeSets`, ...) used by the category.
 
-Implementation: `UGameplayActionFrameworkDebugSubsystem` registers a `FDebugDrawDelegate` via `UDebugDrawService::Register(TEXT("GAF"))`, toggled by the `TCustomShowFlag<GAF>` show flag (controllable via `ShowFlag.GAF`) and the `DebugGAF` console command. `UGameplayActionComponent::DisplayDebug` renders the actual data.
+### Legacy overlay (deprecated)
+
+The old on-screen overlay is still available but deprecated: type `DebugGAF` to toggle it. It relies on `UGameplayActionFrameworkDebugSubsystem` + `UDebugDrawService` and `UGameplayActionComponent::DisplayDebug` — both marked `UE_DEPRECATED` since 1.6 and will be removed in a future release.

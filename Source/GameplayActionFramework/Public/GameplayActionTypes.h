@@ -71,7 +71,7 @@ struct FGameplayActionActorInfo
 
 /** 
  * Struct that holds Gameplay Action Fragments.
- * Use FindFragment() inside Gameplay Action to check if specific Fragment exist inside handle and get optional data.
+ * Use FindFragment() to check if specific Fragment exist inside handle and get optional data.
  */
 USTRUCT(BlueprintType)
 struct FGameplayActionFragmentsHandle
@@ -80,6 +80,6 @@ struct FGameplayActionFragmentsHandle
 	
 public:
 	
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Gameplay Action Fragments Handle", meta=(ShowOnlyInnerProperties))
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Instanced, Category = "Gameplay Action Fragments Handle", meta=(ShowOnlyInnerProperties))
 	TArray<TObjectPtr<UGameplayActionFragment>> FragmentSlots;
 };

@@ -18,6 +18,7 @@ public:
 
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 	virtual bool CanCreateNew() const override { return true; }
+	virtual bool ConfigureProperties() override;
 	
 	TSubclassOf<class UGameplayAction> ParentClass = nullptr;
 };
@@ -33,6 +34,7 @@ public:
 
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 	virtual bool CanCreateNew() const override { return true; }
+	virtual bool ConfigureProperties() override;
 	
 	TSubclassOf<class UGameplayActionAttributeSet> ParentClass = nullptr;
 };
@@ -48,6 +50,7 @@ public:
 
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 	virtual bool CanCreateNew() const override { return true; }
+	virtual bool ConfigureProperties() override;
 
 	TSubclassOf<class UGameplayActionEffect> ParentClass = nullptr;
 };
@@ -63,6 +66,7 @@ public:
 
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 	virtual bool CanCreateNew() const override { return true; }
+	virtual bool ConfigureProperties() override;
 
 	TSubclassOf<class UGameplayActionEffectMagnitudeCalc> ParentClass = nullptr;
 };
@@ -78,6 +82,7 @@ public:
 
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 	virtual bool CanCreateNew() const override { return true; }
+	virtual bool ConfigureProperties() override;
 
 	TSubclassOf<class UGameplayActionEffectExecutionCalc> ParentClass = nullptr;
 };
@@ -93,6 +98,7 @@ public:
 
 	virtual UObject* FactoryCreateNew(UClass* InClass, UObject* InParent, FName InName, EObjectFlags Flags, UObject* Context, FFeedbackContext* Warn) override;
 	virtual bool CanCreateNew() const override { return true; }
+	virtual bool ConfigureProperties() override;
 
 	TSubclassOf<class UGameplayActionFragment> ParentClass = nullptr;
 };

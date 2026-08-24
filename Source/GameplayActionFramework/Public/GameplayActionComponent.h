@@ -25,7 +25,7 @@
 
 #include "GameplayActionComponent.generated.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogGameplayActionComponent, Log, All);
+GAMEPLAYACTIONFRAMEWORK_API DECLARE_LOG_CATEGORY_EXTERN(LogGameplayActionComponent, Log, All);
 
 class UGameplayAction;
 
@@ -81,6 +81,28 @@ public:
 	TSharedPtr<FGameplayActionActorInfo> GetGameplayActionActorInfo() const
 	{
 		return GameplayActionActorInfo;
+	}
+
+	// --- Debug Accessors ---
+
+	const TArray<FGameplayActionSpec>& GetAddedActions() const
+	{
+		return AddedActions;
+	}
+
+	const TArray<UGameplayAction*>& GetActiveTriggeredActions() const
+	{
+		return ActiveTriggeredActions;
+	}
+
+	const FActiveGameplayActionEffectsContainer& GetActiveEffects() const
+	{
+		return ActiveEffects;
+	}
+
+	const TArray<UGameplayActionAttributeSet*>& GetAttributeSets() const
+	{
+		return AttributeSets;
 	}
 
 	// --- Action Management ---
@@ -220,6 +242,7 @@ public:
 	bool IsEffectInhibited(const FActiveGameplayActionEffectHandle& Handle) const;
 
 	/** Draws debug info on canvas. */
+	UE_DEPRECATED(1.6, "DisplayDebug is deprecated since GAF 1.6, use the Gameplay Debugger 'GAF' category instead.")
 	void DisplayDebug(class UCanvas* Canvas, float& YL, float& YPos) const;
 	
 	// --- Delegates ---
@@ -249,11 +272,23 @@ public:
 	{
 		return const_cast<UGameplayActionComponent*>(this);
 	}
-
-protected:
 	
+	/** Attribute sets to be created on BeginPlay */
+	UPROPERTY(EditAnywhere, Category="Gameplay Attributes")
+	TArray<TSubclassOf<UGameplayActionAttributeSet>> DefaultAttributes;
+	
+	/** Specific initial values for attributes (applied after set creation) */
+	UPROPERTY(EditAnywhere, Category="Gameplay Attributes")
+	TArray<FAttributeInitializationData> InitialAttributeValues;
+
+	/** Actions to be initialized on BeginPlay */
+	UPROPERTY(EditAnywhere, Category="Gameplay Actions")
+	TArray<FActionInitializationData> InitialActions;
+
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	
+protected:
 
 	/** Caches the owner actor's components into GameplayActionActorInfo. */
 	void InitActorInfo();
@@ -272,18 +307,6 @@ protected:
 	
 	UPROPERTY()
 	TArray<FGameplayActionSpec> AddedActions;
-	
-	/** Attribute sets to be created on BeginPlay */
-	UPROPERTY(EditAnywhere, Category="Gameplay Attributes")
-	TArray<TSubclassOf<UGameplayActionAttributeSet>> DefaultAttributes;
-	
-	/** Specific initial values for attributes (applied after set creation) */
-	UPROPERTY(EditAnywhere, Category="Gameplay Attributes")
-	TArray<FAttributeInitializationData> InitialAttributeValues;
-
-	/** Actions to be initialized on BeginPlay */
-	UPROPERTY(EditAnywhere, Category="Gameplay Actions")
-	TArray<FActionInitializationData> InitialActions;	
 	
 	/** All active attribute sets managed by this component */
 	UPROPERTY(BlueprintReadOnly, Category="Gameplay Attributes")

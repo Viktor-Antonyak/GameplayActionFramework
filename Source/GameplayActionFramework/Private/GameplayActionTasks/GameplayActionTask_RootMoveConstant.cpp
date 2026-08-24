@@ -39,7 +39,6 @@ UGameplayActionTask_RootMoveConstant* UGameplayActionTask_RootMoveConstant::Root
 		NewTask->bAllowGravity = bEnableGravity;
 		NewTask->FinishClampVelocity = FinishVelocityClamp;
 		NewTask->FinishSetVelocity = FinishVelocitySet;
-		NewTask->ReadyForActivation();
 	}
 	
 	return NewTask;

@@ -8,7 +8,7 @@
 #include "GameplayActionAttributeAggregator.h"
 #include "GameplayActionAttributeSet.generated.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogGameplayActionAttributeSet, Log, All);
+GAMEPLAYACTIONFRAMEWORK_API DECLARE_LOG_CATEGORY_EXTERN(LogGameplayActionAttributeSet, Log, All);
 
 class UGameplayActionAttributeSet;
 class UGameplayActionComponent;
@@ -86,6 +86,19 @@ public:
 	TFieldPath<FProperty> Attribute;
 };
 
+#define GAMEPLAY_ACTION_ATTRIBUTE_ACCESSOR(ClassName, PropertyName) \
+	static FGameplayActionAttribute Get##PropertyName##Attribute() \
+	{ \
+		static FGameplayActionAttribute Attribute(FindFProperty<FProperty>(ClassName::StaticClass(), GET_MEMBER_NAME_CHECKED(ClassName, PropertyName))); \
+		return Attribute; \
+	}
+
+#define GAMEPLAY_ACTION_ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
+	GAMEPLAY_ACTION_ATTRIBUTE_ACCESSOR(ClassName, PropertyName) \
+	FORCEINLINE float Get##PropertyName() const { return PropertyName.GetCurrentValue(); } \
+	FORCEINLINE float GetBase##PropertyName() const { return PropertyName.GetBaseValue(); } \
+	FORCEINLINE void Set##PropertyName(float NewVal) { SetNumericValue(Get##PropertyName##Attribute(), NewVal); } \
+	FORCEINLINE void Init##PropertyName(float NewVal) { InitNumericValue(Get##PropertyName##Attribute(), NewVal); }
 /**
  * Base class for all attribute sets in the Gameplay Action Framework.
  */

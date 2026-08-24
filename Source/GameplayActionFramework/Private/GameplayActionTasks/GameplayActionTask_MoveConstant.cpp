@@ -30,7 +30,6 @@ UGameplayActionTask_MoveConstant* UGameplayActionTask_MoveConstant::MoveConstant
 		NewTask->MoveSpeed = Speed;
 		NewTask->MoveDuration = Duration;
 		NewTask->CurveFloat = SpeedOverTime;
-		NewTask->ReadyForActivation();
 	}
 	
 	return NewTask;

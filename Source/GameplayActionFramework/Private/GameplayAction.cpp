@@ -104,6 +104,19 @@ bool UGameplayAction::RequestTriggerAction(const TSharedPtr<FGameplayActionActor
 	return true;
 }
 
+void UGameplayAction::RequestReleaseInputID()
+{
+	if (HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject))
+	{
+		return;
+	}
+
+	if (bIsActive)
+	{
+		OnInputIDReleased();
+	}
+}
+
 void UGameplayAction::RequestEndAction()
 {
     if (HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject))
@@ -139,14 +152,6 @@ UWorld* UGameplayAction::GetWorld() const
 		return CachedActorInfo->OwnerActor->GetWorld();
 	}
 	return nullptr;
-}
-
-void UGameplayAction::OnActionInitialize_Implementation()
-{
-}
-
-void UGameplayAction::OnActionDeinitialize_Implementation()
-{
 }
 
 // Start of IGameplayTaskOwnerInterface
@@ -387,5 +392,8 @@ void UGameplayAction::EndAllGameplayTasks()
 
 void UGameplayAction::OnExecuteAction_Implementation() {}
 void UGameplayAction::OnActionTriggered_Implementation(const FInstancedStruct& Payload) {}
+void UGameplayAction::OnInputIDReleased_Implementation() {}
 void UGameplayAction::OnEndAction_Implementation(bool bWasCanceled) {}
 bool UGameplayAction::CanExecuteAction_Implementation() const { return true; }
+void UGameplayAction::OnActionInitialize_Implementation() {}
+void UGameplayAction::OnActionDeinitialize_Implementation() {}

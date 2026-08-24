@@ -24,7 +24,6 @@ UGameplayActionTask_WaitGameplayTagRemoved* UGameplayActionTask_WaitGameplayTagR
 		NewTask->TagToCheck = Tag;
 		NewTask->bTriggerOnce = bOnlyTriggerOnce;
 		NewTask->bExact = bExactTag;
-		NewTask->ReadyForActivation();
 	}
 	
 	return NewTask;

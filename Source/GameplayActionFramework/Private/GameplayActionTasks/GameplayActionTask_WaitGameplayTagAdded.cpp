@@ -25,7 +25,6 @@ UGameplayActionTask_WaitGameplayTagAdded* UGameplayActionTask_WaitGameplayTagAdd
 		NewTask->TagToCheck = Tag;
 		NewTask->bTriggerOnce = bOnlyTriggerOnce;
 		NewTask->bExact = bExactTag;
-		NewTask->ReadyForActivation();
 	}
 	
 	return NewTask;

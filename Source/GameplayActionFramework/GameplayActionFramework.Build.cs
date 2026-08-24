@@ -32,6 +32,15 @@ public class GameplayActionFramework : ModuleRules
 			}
 			);
 			
+		if (Target.Configuration != UnrealTargetConfiguration.Shipping)
+		{
+			PrivateDependencyModuleNames.Add("GameplayDebugger");
+			PublicDefinitions.Add("WITH_GAMEPLAY_DEBUGGER=1");
+		}
+		else
+		{
+			PublicDefinitions.Add("WITH_GAMEPLAY_DEBUGGER=0");
+		}
 		
 		PrivateDependencyModuleNames.AddRange(
 			new string[]

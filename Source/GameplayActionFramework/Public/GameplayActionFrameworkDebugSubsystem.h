@@ -8,7 +8,8 @@
 #include "GameplayActionFrameworkDebugSubsystem.generated.h"
 
 UCLASS()
-class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionFrameworkDebugSubsystem : public UWorldSubsystem
+class UE_DEPRECATED(1.6, "UGameplayActionFrameworkDebugSubsystem is deprecated since GAF 1.6, use the Gameplay Debugger 'GAF' category instead.")
+GAMEPLAYACTIONFRAMEWORK_API UGameplayActionFrameworkDebugSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 

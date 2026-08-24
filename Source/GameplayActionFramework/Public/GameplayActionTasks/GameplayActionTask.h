@@ -10,7 +10,7 @@
 class UGameplayAction;
 class UGameplayActionComponent;
 
-DECLARE_LOG_CATEGORY_EXTERN(LogGameplayActionTask, Log, All);
+GAMEPLAYACTIONFRAMEWORK_API DECLARE_LOG_CATEGORY_EXTERN(LogGameplayActionTask, Log, All);
 
 /**
  * Base class for Gameplay Action Task

@@ -201,7 +201,7 @@ void UGameplayActionComponent::ReleaseInputID(int32 InputID)
 
 	if (ActionSpec && IsValid(ActionSpec->Action))
 	{
-		ActionSpec->Action->RequestEndAction();
+		ActionSpec->Action->RequestReleaseInputID();
 	}
 }
 

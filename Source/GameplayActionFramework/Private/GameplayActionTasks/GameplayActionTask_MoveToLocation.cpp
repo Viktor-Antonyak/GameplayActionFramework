@@ -27,7 +27,6 @@ UGameplayActionTask_MoveToLocation* UGameplayActionTask_MoveToLocation::MoveToLo
 		NewTask->EndLocation = TargetLocation;
 		NewTask->MoveDuration = Duration;
 		NewTask->CurveFloat = EasingCurve;
-		NewTask->ReadyForActivation();
 	}
 	
 	return NewTask;

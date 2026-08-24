@@ -18,7 +18,6 @@ UGameplayActionTask_WaitAttributeChanged* UGameplayActionTask_WaitAttributeChang
 	{
 		NewTask->WatchedAttribute = Attribute;
 		NewTask->bTriggerOnce = bOnlyTriggerOnce;
-		NewTask->ReadyForActivation();
 	}
 	
 	return NewTask;
