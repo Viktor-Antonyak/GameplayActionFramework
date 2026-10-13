@@ -9,6 +9,7 @@
 #include "GameplayActionTask_WaitGameplayTagRemoved.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameplayTagRemovedTaskDelegate, FGameplayTag, ActualTag);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnGameplayTagRemovedTaskNativeDelegate, FGameplayTag ActualTag);
 
 /**
  * Waits until a specific Gameplay Tag is removed from the owning GameplayActionComponent.
@@ -19,6 +20,8 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionTask_WaitGameplayTagRemoved : p
 	GENERATED_BODY()
 	
 public:
+	
+	UGameplayActionTask_WaitGameplayTagRemoved();
 	
 	/** 
 	 * Waits for a Gameplay Tag to be removed from the owning GameplayActionComponent.
@@ -40,6 +43,8 @@ public:
 	/** Fired when a matching tag is removed; broadcasts the actual tag that matched. Fires once per matching tag in the removed tags container. */
 	UPROPERTY(BlueprintAssignable)
 	FOnGameplayTagRemovedTaskDelegate OnTagRemoved;
+	
+	FOnGameplayTagRemovedTaskNativeDelegate OnTagRemovedNative;
 	
 protected:
 	

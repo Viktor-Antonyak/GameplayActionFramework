@@ -84,7 +84,7 @@ FGameplayActionSpec UGameplayActionComponent::AddGameplayAction(const TSubclassO
 	}
 
 	const UGameplayAction* DefaultAction = Action->GetDefaultObject<UGameplayAction>();
-	if (DefaultAction && DefaultAction->ActionType == EGameplayActionType::Triggered)
+	if (DefaultAction && DefaultAction->GetActionType() == EGameplayActionType::Triggered)
 	{
 		UE_LOG(LogGameplayActionComponent, Warning, TEXT("AddGameplayAction: Action class %s is a Triggered type and cannot be added as a permanent action."), *Action->GetName());
 		return FGameplayActionSpec();
@@ -95,7 +95,7 @@ FGameplayActionSpec UGameplayActionComponent::AddGameplayAction(const TSubclassO
 	FGameplayActionSpec NewActionSpec;
 	NewActionSpec.Action = NewAction;
 	NewActionSpec.Level = Level;
-	NewActionSpec.InputID = NewAction->InputID;
+	NewActionSpec.InputID = NewAction->GetActionInputID();
 	
 	AddedActions.Add(NewActionSpec);
 	
@@ -160,7 +160,7 @@ void UGameplayActionComponent::TriggerActionByClass(TSubclassOf<UGameplayAction>
 	}
 	
 	const UGameplayAction* DefaultAction = ActionClass->GetDefaultObject<UGameplayAction>();
-	if (DefaultAction && DefaultAction->ActionType == EGameplayActionType::Default)
+	if (DefaultAction && DefaultAction->GetActionType() == EGameplayActionType::Default)
 	{
 		UE_LOG(LogGameplayActionComponent, Warning, TEXT("TriggerActionByClass: Action class %s is a Default type and cannot be added as a triggered action."), *ActionClass->GetName());
 		return;
@@ -246,6 +246,46 @@ void UGameplayActionComponent::RemoveTriggeredAction(UGameplayAction* Action, bo
 	}
 }
 
+bool UGameplayActionComponent::CanActionCancelOtherActions(const UGameplayAction* Action) const
+{
+	bool bCanceledAllActions = true;
+    
+	TArray<UGameplayAction*> Actions = GetActiveActions();
+	
+	for (UGameplayAction* ActiveAction : Actions)
+	{
+		if (ActiveAction && ActiveAction != Action && Action->GetCancelOtherActionsTags().HasTag(ActiveAction->GetActionTag()))
+		{
+			if (!ActiveAction->RequestCancelAction())
+			{
+				bCanceledAllActions = false;
+                
+				if (Action->GetCancelPolicy() == EGameplayActionCancelPolicy::Block)
+				{
+					break;
+				}
+			}
+		}
+	}
+	
+	return bCanceledAllActions;
+}
+
+bool UGameplayActionComponent::ActionBlockedByOtherAction(const UGameplayAction* Action) const
+{
+	FGameplayTag ThisActionTag = Action->GetActionTag();
+    
+	TArray<UGameplayAction*> Actions = ActiveActions;
+	
+	UGameplayAction* const* FoundBlockAction = Actions.FindByPredicate(
+		[ThisActionTag](const UGameplayAction* PredicateAction)
+		{
+			return PredicateAction && PredicateAction->GetBlockOtherActionsTags().HasTag(ThisActionTag);
+		});
+	
+	return FoundBlockAction;
+}
+
 // --- Tag Management ---
 void UGameplayActionComponent::AddOwnedGameplayTags(FGameplayTagContainer Tags, int32 Quantity)
 {
@@ -271,9 +311,12 @@ void UGameplayActionComponent::RemoveOwnedGameplayTags(FGameplayTagContainer Tag
 	OnGameplayTagsRemoved.Broadcast(Tags);
 }
 
-int32 UGameplayActionComponent::GetOwnedGameplayTagCount(FGameplayTag Tag) const
+void UGameplayActionComponent::SendGameplayEvent(FGameplayTag EventTag)
 {
-	return GameplayTagContainer.GetTagCount(Tag);
+	if (EventTag.IsValid())
+	{
+		OnGameplayActionEvent.Broadcast(EventTag);	
+	}
 }
 
 // --- Attribute Management ---
@@ -565,12 +608,7 @@ bool UGameplayActionComponent::RemoveActiveGameplayEffect(const FActiveGameplayA
 	return true;
 }
 
-bool UGameplayActionComponent::HasActiveEffectSpecHandle(const FActiveGameplayActionEffectHandle& Spec)
-{
-	return Spec.IsValid() && ActiveEffects.Find(Spec) != nullptr;
-}
-
-bool UGameplayActionComponent::HasActiveEffect(TSubclassOf<UGameplayActionEffect> EffectClass)
+bool UGameplayActionComponent::HasActiveEffect(TSubclassOf<UGameplayActionEffect> EffectClass) const
 {
 	if (!IsValid(EffectClass)) 
 	{
@@ -629,6 +667,37 @@ bool UGameplayActionComponent::IsEffectInhibited(const FActiveGameplayActionEffe
 {
 	const FActiveGameplayActionEffect* Effect = ActiveEffects.Find(Handle);
 	return Effect ? Effect->bIsInhibited : false;
+}
+
+float UGameplayActionComponent::GetEffectElapsedTime(const FActiveGameplayActionEffectHandle& Handle) const
+{
+	const FActiveGameplayActionEffect* Effect = ActiveEffects.Find(Handle);
+	
+	if (!Effect || !GetWorld())
+	{
+		return 0.0f;
+	}
+	
+	return GetWorld()->GetTimeSeconds() - Effect->StartTime;
+}
+
+float UGameplayActionComponent::GetEffectRemainingTime(const FActiveGameplayActionEffectHandle& Handle) const
+{
+	const FActiveGameplayActionEffect* Effect = ActiveEffects.Find(Handle);
+	
+	if (!Effect || Effect->Duration <= 0.0f)
+	{
+		return -1.0f;
+	}
+	
+	return FMath::Max(0.0f, Effect->Duration - GetEffectElapsedTime(Handle));
+}
+
+float UGameplayActionComponent::GetEffectDuration(const FActiveGameplayActionEffectHandle& Handle) const
+{
+	const FActiveGameplayActionEffect* Effect = ActiveEffects.Find(Handle);
+	
+	return Effect ? Effect->Duration : 0.0f;
 }
 
 void UGameplayActionComponent::ApplyEffectModifiers(const FActiveGameplayActionEffect& Effect)

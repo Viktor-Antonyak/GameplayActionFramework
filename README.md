@@ -12,7 +12,8 @@ A lightweight, modular gameplay ability system for Unreal Engine 5. Inspired by 
 - **Execution Calculation** — Full control over effect application, replaces standard modifier loop
 - **Tags** — Stackable `FGameplayTag` system with reference counting (quantity), application requirements, blocked tags, and granted tags
 - **Init Actions** — Actions auto-initialized on BeginPlay from the component's array, no Blueprint graph needed
-- **Blueprint Library** — Helper functions for applying effects, managing tags, and reading attributes from any actor
+- **Blueprint Library** — Helper functions for applying effects, managing tags, reading attributes, and sending gameplay events from any actor
+- **Gameplay Events** — `SendGameplayEvent` + `WaitGameplayEvent` task for tag-based event broadcasting across the component
 - **Debug Visualization** — Gameplay Debugger `GAF` category (plus the deprecated `DebugGAF` on-screen overlay) to inspect actions, effects, tags, and attributes
 
 ## Quick Start
@@ -104,7 +105,13 @@ or, if any `Override` modifier is active, `CurrentValue = <last Override>`. This
 
 **Tags** — effects can grant tags on application, require tags on the target (`ApplicationRequiredTags`), or be blocked by tags on the target (`ApplicationBlockedTags`). Tags now use a stackable container with reference counting — `AddOwnedGameplayTags` / `RemoveOwnedGameplayTags` accept a `Quantity` parameter, and `GetOwnedGameplayTagCount(Tag)` returns the current stack count.
 
-**Component delegates** — the component exposes Blueprint-assignable events: `OnActionActivated`, `OnActionEnded`, `OnEffectAdded`, `OnEffectRemoved`, `OnAttributeChanged`, `OnGameplayTagsAdded`, `OnGameplayTagsRemoved`.
+**Component delegates** — the component exposes Blueprint-assignable events: `OnActionActivated`, `OnActionEnded`, `OnEffectAdded`, `OnEffectRemoved`, `OnAttributeChanged`, `OnGameplayTagsAdded`, `OnGameplayTagsRemoved`, `OnGameplayActionEvent`.
+
+**Gameplay events** — `SendGameplayEvent(EventTag)` broadcasts `OnGameplayActionEvent` on the component; from Blueprint use `SendGameplayEventToActor(Actor, EventTag)`. Consume events with the `WaitGameplayEvent` task (see Tasks below).
+
+**Effect time queries** — three `BlueprintPure` helpers on active effects: `GetEffectElapsedTime(Handle)` (seconds since application), `GetEffectRemainingTime(Handle)` (seconds until expiry; `-1` for infinite/invalid), `GetEffectDuration(Handle)` (total duration; `-1` for infinite, `0` for invalid).
+
+**Native (C++) delegates on tasks** — every task exposes an additional native multicast delegate next to its Blueprint one (e.g. `OnMovementFinishedNative`, `OnAttributeChangedNative`, `OnTagAddedNative`, `OnCompletedNative`, `OnGameplayEventNative`) for C++ binding without Blueprint.
 
 ### Cost and Cooldown
 
@@ -202,6 +209,7 @@ void UMyExecution::Execute_Implementation(
 | `GetOwnedGameplayTagsFromActor` | Returns tags on an actor |
 | `AddOwnedGameplayTagsToActor(Tags, Quantity=1)` | Adds tags to an actor with optional stack count |
 | `RemoveOwnedGameplayTagsFromActor(Tags, Quantity=1)` | Removes tags from an actor with optional stack count |
+| `SendGameplayEventToActor(EventTag)` | Sends a gameplay event to an actor's component (broadcasts `OnGameplayActionEvent`) |
 | `GetAttributeValueFromActor` | Gets an attribute's current value |
 | `MakeGameplayEffectSpec(Effect, Level=1, SourceActor=null)` | Creates an effect spec from a class with optional level and source |
 | `AddSetByCallerMagnitude` | Adds a set-by-caller magnitude to a spec |
@@ -218,6 +226,7 @@ Tasks are lightweight `UGameplayTask`-based helpers that run on the owning `UGam
 | `WaitAttributeChanged(Attribute, bOnlyTriggerOnce)` | Fires `OnAttributeChanged` whenever the watched attribute's value changes on the component |
 | `WaitGameplayTagAdded(Tag, bExactTag, bOnlyTriggerOnce)` | Fires `OnTagAdded` when a matching tag is added |
 | `WaitGameplayTagRemoved(Tag, bExactTag, bOnlyTriggerOnce)` | Fires `OnTagRemoved` when a matching tag is removed |
+| `WaitGameplayEvent(Tag, bExactTag, bOnlyTriggerOnce)` | Fires `OnGameplayEvent` when `SendGameplayEvent(EventTag)` matches the tag |
 | `PlayMontageAndWaitNotify(InMesh, Montage, PlayRate, StartSection, StartTimeSeconds, bStopMontageAtEnd)` | Plays a montage and fires `OnCompleted` / `OnBlendedOut` / `OnInterrupted` / `OnCancelled`, plus `OnNotifyBegin` / `OnNotifyEnd` for Branching Point notifies |
 | `MoveConstant(Direction, Speed, Duration, SpeedOverTime)` | Moves an Actor at a constant velocity for a fixed duration |
 | `MoveToLocation(TargetLocation, Duration, EasingCurve)` | Moves an Actor to a world location over time |
@@ -230,6 +239,7 @@ Notes:
 - Movement tasks broadcast `OnMovementFinished` on success and `OnMovementInterrupted` if destroyed before completing.
 - Tag tasks fire once per matching tag inside a single added/removed container broadcast; `bOnlyTriggerOnce` ends the task after the first broadcast that contains a match (even if several tags matched).
 - Root tasks accept root-motion settings (`RootMotionMode`, `RootMotionFinishVelocityMode`, gravity) and remove the root-motion source on destroy.
+- Tasks don't tick (`bTickingTask = false`) and are created with priority 127; each task also broadcasts a native (`*Native`) delegate alongside the Blueprint one for C++ binding.
 
 ### Cancel Policy
 

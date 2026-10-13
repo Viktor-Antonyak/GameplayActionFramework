@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.6",
+	"VersionName": "1.7",
 	"FriendlyName": "GameplayActionFramework",
 	"Description": "Lightweight, modular architecture for defining, triggering, and managing complex character abilities and interactions. Similar to Gameplay Ability System framework",
 	"Category": "Gameplay",
@@ -11,7 +11,7 @@
 	"MarketplaceURL": "https://github.com/Viktor-Antonyak/GameplayActionFramework",
 	"SupportURL": "https://github.com/Viktor-Antonyak/GameplayActionFramework",
 	"CanContainContent": false,
-	"IsBetaVersion": true,
+	"IsBetaVersion": false,
 	"Installed": false,
 	"Modules": [
 		{

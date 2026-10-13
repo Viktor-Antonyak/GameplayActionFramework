@@ -4,6 +4,11 @@
 #include "GameplayActionTasks/GameplayActionTask_WaitGameplayTagRemoved.h"
 #include "GameplayActionComponent.h"
 
+UGameplayActionTask_WaitGameplayTagRemoved::UGameplayActionTask_WaitGameplayTagRemoved()
+{
+	bTickingTask = false;
+}
+
 UGameplayActionTask_WaitGameplayTagRemoved* UGameplayActionTask_WaitGameplayTagRemoved::WaitGameplayTagRemoved
 (
 	UObject* WorldContextObject,
@@ -71,6 +76,7 @@ void UGameplayActionTask_WaitGameplayTagRemoved::HandleTag(const FGameplayTagCon
 		if (bMatch)
 		{
 			OnTagRemoved.Broadcast(Tag);
+			OnTagRemovedNative.Broadcast(Tag);
 		}
 	}
 

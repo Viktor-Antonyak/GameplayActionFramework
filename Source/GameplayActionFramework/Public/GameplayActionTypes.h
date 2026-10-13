@@ -82,4 +82,10 @@ public:
 	
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Instanced, Category = "Gameplay Action Fragments Handle", meta=(ShowOnlyInnerProperties))
 	TArray<TObjectPtr<UGameplayActionFragment>> FragmentSlots;
+
+	/** @return True if contains any fragment */
+	bool IsValid() const
+	{
+		return !FragmentSlots.IsEmpty();
+	}
 };

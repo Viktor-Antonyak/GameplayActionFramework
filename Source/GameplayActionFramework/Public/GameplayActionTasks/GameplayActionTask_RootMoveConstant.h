@@ -19,6 +19,8 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionTask_RootMoveConstant : public 
 	
 public:
 	
+	UGameplayActionTask_RootMoveConstant();
+	
 	/** 
 	 * Applies constant velocity root motion to the Character for the specified duration.
 	 * @param RootTaskName Name used to identify the root motion source instance.

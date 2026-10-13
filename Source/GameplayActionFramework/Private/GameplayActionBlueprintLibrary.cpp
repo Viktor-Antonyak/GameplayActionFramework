@@ -60,6 +60,20 @@ bool UGameplayActionBlueprintLibrary::RemoveOwnedGameplayTagsFromActor(AActor* A
 	return false;
 }
 
+bool UGameplayActionBlueprintLibrary::SendGameplayEventToActor(AActor* Actor, FGameplayTag EventTag)
+{
+	if (IsValid(Actor))
+	{
+		UGameplayActionComponent* Component = GetGameplayActionComponent(Actor);
+		if (IsValid(Component))
+		{
+			Component->SendGameplayEvent(EventTag);
+			return true;
+		}
+	}
+	return false;
+}
+
 float UGameplayActionBlueprintLibrary::GetAttributeValueFromActor(AActor* Actor, const FGameplayActionAttribute& Attribute)
 {
 	if (IsValid(Actor))

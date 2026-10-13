@@ -88,6 +88,7 @@ void UGameplayActionTask_MoveToLocation::TickTask(float DeltaTime)
 		bMovementCompleted = true;
 		
 		OnMovementFinished.Broadcast();
+		OnMovementFinishedNative.Broadcast();
 		
 		EndTask();
 	}
@@ -98,6 +99,7 @@ void UGameplayActionTask_MoveToLocation::OnDestroy(bool bInOwnerFinished)
 	if (!bMovementCompleted)
 	{
 		OnMovementInterrupted.Broadcast();
+		OnMovementInterruptedNative.Broadcast();
 	}
 	
 	Super::OnDestroy(bInOwnerFinished);

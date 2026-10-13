@@ -9,6 +9,7 @@
 #include "GameplayActionTask_WaitAttributeChanged.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnAttributeChangedDelegate, FGameplayActionAttribute, Attribute, float, NewValue, float, OldValue);
+DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnAttributeChangedNativeDelegate, FGameplayActionAttribute Attribute, float NewValue, float OldValue);
 
 /**
  * Waits for a specific Gameplay Attribute's numeric value to change on the owning GameplayActionComponent.
@@ -19,6 +20,8 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionTask_WaitAttributeChanged : pub
 	GENERATED_BODY()
 	
 public:
+	
+	UGameplayActionTask_WaitAttributeChanged();
 	
 	/** 
 	 * @param Attribute Attribute to watch for changes.
@@ -36,6 +39,8 @@ public:
 	/** Fired when the watched attribute's value changes. */
 	UPROPERTY(BlueprintAssignable)
 	FOnAttributeChangedDelegate OnAttributeChanged;
+	
+	FOnAttributeChangedNativeDelegate OnAttributeChangedNative;
 	
 protected:
 	

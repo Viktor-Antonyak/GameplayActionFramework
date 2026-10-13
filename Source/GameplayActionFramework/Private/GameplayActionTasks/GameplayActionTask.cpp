@@ -55,7 +55,9 @@ UGameplayActionTask* UGameplayActionTask::NewTaskInternal(UClass* TaskClass, UOb
 		return nullptr;
 	}
 
-	NewTask->InitTask(*TaskOwner, NewTask->GetPriority());
+	uint8 Priority = 127;
+	
+	NewTask->InitTask(*TaskOwner, Priority);
 	NewTask->CachedGameplayActionComponent = OwnerComponent;
 	NewTask->CachedGameplayAction = Cast<UGameplayAction>(WorldContextObject);
 

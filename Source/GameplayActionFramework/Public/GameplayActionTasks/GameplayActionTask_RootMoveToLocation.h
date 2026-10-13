@@ -20,6 +20,10 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionTask_RootMoveToLocation : publi
 {
 	GENERATED_BODY()
 	
+public:
+	
+	UGameplayActionTask_RootMoveToLocation();
+	
 	/** 
 	 * Moves the Character to the given world location over the specified duration using root motion.
 	 * @param RootTaskName Name used to identify the root motion source instance.

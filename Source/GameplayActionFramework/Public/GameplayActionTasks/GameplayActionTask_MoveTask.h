@@ -8,9 +8,12 @@
 #include "GameplayActionTask_MoveTask.generated.h"
 
 class UCurveFloat;
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMovementFinished);
+DECLARE_MULTICAST_DELEGATE(FOnMovementFinishedNative);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMovementInterrupted);
+DECLARE_MULTICAST_DELEGATE(FOnMovementInterruptedNative);
 
 
 /**
@@ -27,9 +30,13 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnMovementInterrupted OnMovementInterrupted;
 	
+	FOnMovementInterruptedNative OnMovementInterruptedNative;
+	
 	/** Fired when the movement completes successfully. */
 	UPROPERTY(BlueprintAssignable)
 	FOnMovementFinished OnMovementFinished;
+	
+	FOnMovementFinishedNative OnMovementFinishedNative;
 	
 protected:
 	

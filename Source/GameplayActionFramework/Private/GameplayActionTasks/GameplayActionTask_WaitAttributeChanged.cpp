@@ -5,6 +5,11 @@
 #include "GameplayActionTasks/GameplayActionTask_WaitAttributeChanged.h"
 #include "GameplayActionComponent.h"
 
+UGameplayActionTask_WaitAttributeChanged::UGameplayActionTask_WaitAttributeChanged()
+{
+	bTickingTask = false;
+}
+
 UGameplayActionTask_WaitAttributeChanged* UGameplayActionTask_WaitAttributeChanged::WaitAttributeChanged
 (
 	UObject* WorldContextObject,
@@ -59,6 +64,7 @@ void UGameplayActionTask_WaitAttributeChanged::HandleAttribute(const FGameplayAc
 	}
 	
 	OnAttributeChanged.Broadcast(Attribute, NewValue, OldValue);
+	OnAttributeChangedNative.Broadcast(Attribute, NewValue, OldValue);
 
 	if (bTriggerOnce)
 	{

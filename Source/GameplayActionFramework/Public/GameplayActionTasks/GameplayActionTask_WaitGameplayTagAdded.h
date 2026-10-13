@@ -9,6 +9,7 @@
 #include "GameplayActionTask_WaitGameplayTagAdded.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameplayTagAddedTaskDelegate, FGameplayTag, ActualTag);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnGameplayTagAddedTaskNativeDelegate, FGameplayTag ActualTag);
 
 /**
  * Waits until a specific Gameplay Tag is added on the owning GameplayActionComponent.
@@ -19,6 +20,8 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionTask_WaitGameplayTagAdded : pub
 	GENERATED_BODY()
 	
 public:
+	
+	UGameplayActionTask_WaitGameplayTagAdded();
 	
 	/** 
 	 * Waits for a Gameplay Tag to be added to the owning GameplayActionComponent.
@@ -40,6 +43,8 @@ public:
 	/** Fired when a matching tag is added; broadcasts the actual tag that matched. Fires once per matching tag in the added tags container. */
 	UPROPERTY(BlueprintAssignable)
 	FOnGameplayTagAddedTaskDelegate OnTagAdded;
+	
+	FOnGameplayTagAddedTaskNativeDelegate OnTagAddedNative;
 	
 protected:
 	

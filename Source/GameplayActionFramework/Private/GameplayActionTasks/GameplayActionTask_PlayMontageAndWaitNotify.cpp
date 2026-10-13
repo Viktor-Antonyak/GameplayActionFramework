@@ -6,6 +6,11 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimMontage.h"
 
+UGameplayActionTask_PlayMontageAndWaitNotify::UGameplayActionTask_PlayMontageAndWaitNotify()
+{
+	bTickingTask = false;
+}
+
 UGameplayActionTask_PlayMontageAndWaitNotify* UGameplayActionTask_PlayMontageAndWaitNotify::PlayMontageAndWaitNotify
 (
 	UObject* WorldContextObject, 
@@ -85,6 +90,7 @@ void UGameplayActionTask_PlayMontageAndWaitNotify::OnDestroy(bool bInOwnerFinish
 		if (!bMontageEndedNaturally)
 		{
 			OnCancelled.Broadcast(NAME_None);
+			OnCanceledNative.Broadcast(NAME_None);
 			
 			if (bStopAtEnd && MontageToPlay)
 			{
@@ -103,10 +109,12 @@ void UGameplayActionTask_PlayMontageAndWaitNotify::OnMontageBlendedOut(UAnimMont
 		if (bInterrupted)
 		{
 			OnInterrupted.Broadcast(NAME_None);
+			OnInterruptedNative.Broadcast(NAME_None);
 		}
 		else
 		{
 			OnBlendedOut.Broadcast(NAME_None);
+			OnBlendedOutNative.Broadcast(NAME_None);
 		}
 	}
 }
@@ -121,6 +129,7 @@ void UGameplayActionTask_PlayMontageAndWaitNotify::OnMontageEnded(UAnimMontage* 
 		if (!bInterrupted)
 		{
 			OnCompleted.Broadcast(NAME_None);
+			OnCompletedNative.Broadcast(NAME_None);
 		}
 		
 		EndTask();
@@ -133,6 +142,7 @@ void UGameplayActionTask_PlayMontageAndWaitNotify::OnNotifyBeginReceived(FName N
 	if (BranchingPointPayload.SequenceAsset == MontageToPlay)
 	{
 		OnNotifyBegin.Broadcast(NotifyName);
+		OnNotifyBeginNative.Broadcast(NotifyName);
 	}
 }
 
@@ -142,5 +152,6 @@ void UGameplayActionTask_PlayMontageAndWaitNotify::OnNotifyEndReceived(FName Not
 	if (BranchingPointPayload.SequenceAsset == MontageToPlay)
 	{
 		OnNotifyEnd.Broadcast(NotifyName);
+		OnNotifyEndNative.Broadcast(NotifyName);
 	}
 }

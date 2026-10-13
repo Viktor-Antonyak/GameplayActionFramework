@@ -10,6 +10,11 @@
 #include "GameFramework/CharacterMovementComponent.h"
 
 
+UGameplayActionTask_RootMoveToLocation::UGameplayActionTask_RootMoveToLocation()
+{
+	bTickingTask = false;
+}
+
 UGameplayActionTask_RootMoveToLocation* UGameplayActionTask_RootMoveToLocation::RootMoveToLocation
 (
 	UObject* WorldContextObject, 
@@ -106,10 +111,12 @@ void UGameplayActionTask_RootMoveToLocation::OnDestroy(bool bInOwnerFinished)
 	if (bMovementCompleted)
 	{
 		OnMovementFinished.Broadcast();
+		OnMovementFinishedNative.Broadcast();
 	}
 	else
 	{
 		OnMovementInterrupted.Broadcast();
+		OnMovementInterruptedNative.Broadcast();
 	}
 	
 	Super::OnDestroy(bInOwnerFinished);

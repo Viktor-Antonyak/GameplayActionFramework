@@ -5,6 +5,11 @@
 #include "GameplayActionTasks/GameplayActionTask_WaitGameplayTagAdded.h"
 #include "GameplayActionComponent.h"
 
+UGameplayActionTask_WaitGameplayTagAdded::UGameplayActionTask_WaitGameplayTagAdded()
+{
+	bTickingTask = false;
+}
+
 UGameplayActionTask_WaitGameplayTagAdded* UGameplayActionTask_WaitGameplayTagAdded::WaitGameplayTagAdded
 (
 	UObject* WorldContextObject,
@@ -76,6 +81,7 @@ void UGameplayActionTask_WaitGameplayTagAdded::HandleTag(const FGameplayTagConta
 		if (bMatch)
 		{
 			OnTagAdded.Broadcast(Tag);
+			OnTagAddedNative.Broadcast(Tag);
 		}
 	}
 

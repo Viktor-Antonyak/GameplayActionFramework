@@ -130,13 +130,30 @@ public:
 	{
 		return GameplayActionInfoTags.GameplayActionTag;
 	}
+	
 	FGameplayTagContainer GetBlockOtherActionsTags() const 
 	{
 		return GameplayActionInfoTags.BlockOtherActions;
 	}
+	
 	FGameplayTagContainer GetCancelOtherActionsTags() const 
 	{
 		return GameplayActionInfoTags.CancelOtherActions;
+	}
+	
+	EGameplayActionCancelPolicy GetCancelPolicy() const
+	{
+		return CancelPolicy;
+	}
+	
+	EGameplayActionType GetActionType() const
+	{
+		return ActionType;
+	}
+	
+	int32 GetActionInputID() const
+	{
+		return InputID;
 	}
 	
 public:
@@ -260,6 +277,17 @@ protected:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Cost")
 	TSubclassOf<UGameplayActionEffect> CostEffect;
 
+protected:
+	
+	// Implementations
+	virtual void OnExecuteAction_Implementation() {}
+	virtual void OnActionTriggered_Implementation(const FInstancedStruct& Payload) {}
+	virtual void OnInputIDReleased_Implementation() {}
+	virtual void OnEndAction_Implementation(bool bWasCanceled) {}
+	virtual bool CanExecuteAction_Implementation() const { return true; }
+	virtual void OnActionInitialize_Implementation() {}
+	virtual void OnActionDeinitialize_Implementation() {}
+	
 private:
 
 	/** Returns whether all currently active actions can be canceled. */
@@ -268,7 +296,7 @@ private:
 	/** Returns whether the owner has any of the BlockedByTags. */
 	bool CheckBlockedTags() const;
 
-	/** Returns whether the owner has all of the RequireTags. */
+	/** Returns whether the owner has all the RequireTags. */
 	bool CheckRequiredTags() const;
 
 	/** Returns whether any other active action blocks this action via BlockOtherActions. */
@@ -293,6 +321,5 @@ private:
 
 	TSharedPtr<FGameplayActionActorInfo> CachedActorInfo;
 	
-	friend class UGameplayActionComponent;
 	friend class UGameplayActionFactory;
 };

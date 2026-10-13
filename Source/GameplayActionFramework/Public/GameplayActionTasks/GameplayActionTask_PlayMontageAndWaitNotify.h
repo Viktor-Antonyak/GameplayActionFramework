@@ -13,6 +13,7 @@ class USkeletalMeshComponent;
 
 /** @note All delegates must send NotifyName otherwise we won't see it as output pin in task node */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMontageTaskDelegate, FName, NotifyName);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMontageTaskNativeDelegate, FName NotifyName);
 
 /**
  * Run Animation Montage on a specific Skeletal Mesh Component
@@ -23,6 +24,8 @@ class GAMEPLAYACTIONFRAMEWORK_API UGameplayActionTask_PlayMontageAndWaitNotify :
 	GENERATED_BODY()
 	
 public:
+	
+	UGameplayActionTask_PlayMontageAndWaitNotify();
 	
 	/** 
 	 * Plays an Animation Montage on the given Skeletal Mesh Component and waits for branching point notifies.
@@ -50,17 +53,25 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnMontageTaskDelegate OnCompleted;
 	 
+	FOnMontageTaskNativeDelegate OnCompletedNative;
+	
 	/** Fired when the montage starts blending out towards another animation. */
 	UPROPERTY(BlueprintAssignable)
 	FOnMontageTaskDelegate OnBlendedOut;
 	 
+	FOnMontageTaskNativeDelegate OnBlendedOutNative;
+	
 	/** Fired when the montage is interrupted (e.g. replaced by another montage). */
 	UPROPERTY(BlueprintAssignable)
 	FOnMontageTaskDelegate OnInterrupted;
 	 
+	FOnMontageTaskNativeDelegate OnInterruptedNative;
+	
 	/** Fired when the task is destroyed before the montage ended naturally. */
 	UPROPERTY(BlueprintAssignable)
 	FOnMontageTaskDelegate OnCancelled;
+	
+	FOnMontageTaskNativeDelegate OnCanceledNative;
 	
 	/** 
 	* Fired when a Branching Point notify begins during the montage. 
@@ -70,6 +81,8 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnMontageTaskDelegate OnNotifyBegin;
 	
+	FOnMontageTaskNativeDelegate OnNotifyBeginNative;
+	
 	/** 
 	* Fired when a Branching Point notify ends during the montage. 
 	* @note only fires for notifies explicitly marked as "Branching Point" in the montage editor 
@@ -77,6 +90,8 @@ public:
 	*/
 	UPROPERTY(BlueprintAssignable)
 	FOnMontageTaskDelegate OnNotifyEnd;
+	
+	FOnMontageTaskNativeDelegate OnNotifyEndNative;
 	
 protected:
 	

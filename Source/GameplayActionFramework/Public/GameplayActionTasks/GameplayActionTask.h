@@ -42,6 +42,8 @@ protected:
 		return CachedGameplayAction.Get();
 	}
 	
+private:
+	
 	TWeakObjectPtr<UGameplayActionComponent> CachedGameplayActionComponent;
 	
 	TWeakObjectPtr<UGameplayAction> CachedGameplayAction;

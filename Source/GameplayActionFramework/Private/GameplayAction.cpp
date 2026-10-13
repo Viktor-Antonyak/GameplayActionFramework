@@ -14,6 +14,21 @@ UGameplayAction::UGameplayAction()
 
 void UGameplayAction::InitializeAction(const TSharedPtr<FGameplayActionActorInfo>& ActorInfo, int32 ActionLevel)
 {
+	if (HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject))
+	{
+		return;
+	}
+
+	if (!ActorInfo.IsValid())
+	{
+		return;
+	}
+	
+	if (bIsActive)
+	{
+		return;
+	}
+	
 	CachedActorInfo = ActorInfo;
 	CachedActionLevel = ActionLevel;
 	
@@ -22,6 +37,16 @@ void UGameplayAction::InitializeAction(const TSharedPtr<FGameplayActionActorInfo
 
 void UGameplayAction::DeinitializeAction()
 {
+	if (HasAnyFlags(RF_ClassDefaultObject | RF_ArchetypeObject))
+	{
+		return;
+	}
+	
+	if (bIsActive)
+	{
+		return;
+	}
+	
 	CachedActorInfo.Reset();
 	CachedActionLevel = -1;
 	
@@ -281,48 +306,42 @@ TArray<USkeletalMeshComponent*> UGameplayAction::GetSkeletalMeshComponents() con
 
 bool UGameplayAction::CanCancelAllActions() const 
 {
-    bool bCanceledAllActions = true;
+	if (!IsValid(GetActionComponent()))
+	{
+		return false;
+	}
     
-    for (UGameplayAction* ActiveAction : GetActionComponent()->GetActiveActions())
-    {
-        if (ActiveAction && ActiveAction != this && GetCancelOtherActionsTags().HasTag(ActiveAction->GetActionTag()))
-        {
-            if (!ActiveAction->RequestCancelAction())
-            {
-                bCanceledAllActions = false;
-                
-                if (CancelPolicy == EGameplayActionCancelPolicy::Block)
-                {
-                    break;
-                }
-            }
-        }
-    }
-    
-    return bCanceledAllActions;
+    return GetActionComponent()->CanActionCancelOtherActions(this);
 }
 
 bool UGameplayAction::CheckBlockedTags() const 
 {
+	if (!IsValid(GetActionComponent()))
+	{
+		return false;
+	}
+	
     return GetActionComponent()->GetOwnedGameplayTags().HasAny(GameplayActionInfoTags.BlockedByTags);
 }
 
 bool UGameplayAction::CheckRequiredTags() const 
 {
+	if (!IsValid(GetActionComponent()))
+	{
+		return false;
+	}
+	
     return GetActionComponent()->GetOwnedGameplayTags().HasAll(GameplayActionInfoTags.RequireTags);
 }
 
 bool UGameplayAction::CheckBlockedActionTags() const 
 {
-    FGameplayTag ThisActionTag = GetActionTag();
-    
-   	UGameplayAction* const* FoundBlockAction = GetActionComponent()->GetActiveActions().FindByPredicate(
-	[ThisActionTag](const UGameplayAction* PredicateAction)
-	{
-		return PredicateAction && PredicateAction->GetBlockOtherActionsTags().HasTag(ThisActionTag);
-	});
+    if (!IsValid(GetActionComponent()))
+    {
+	    return false;
+    }
 
-    return FoundBlockAction != nullptr;
+    return GetActionComponent()->ActionBlockedByOtherAction(this);
 }
 
 bool UGameplayAction::CanApplyCost() const
@@ -389,11 +408,3 @@ void UGameplayAction::EndAllGameplayTasks()
 		}
 	}
 }
-
-void UGameplayAction::OnExecuteAction_Implementation() {}
-void UGameplayAction::OnActionTriggered_Implementation(const FInstancedStruct& Payload) {}
-void UGameplayAction::OnInputIDReleased_Implementation() {}
-void UGameplayAction::OnEndAction_Implementation(bool bWasCanceled) {}
-bool UGameplayAction::CanExecuteAction_Implementation() const { return true; }
-void UGameplayAction::OnActionInitialize_Implementation() {}
-void UGameplayAction::OnActionDeinitialize_Implementation() {}

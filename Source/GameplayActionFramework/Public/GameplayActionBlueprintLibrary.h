@@ -31,25 +31,28 @@ public:
 	static UGameplayActionComponent* GetGameplayActionComponent(AActor* Actor);
 
 	/** Returns the owned gameplay tags of the actor. */
-	UFUNCTION(BlueprintPure, Category = "Gameplay Action")
+	UFUNCTION(BlueprintPure, Category = "Gameplay Tag")
 	static FGameplayTagContainer GetOwnedGameplayTagsFromActor(AActor* Actor);
 
 	/** Adds owned gameplay tags to the actor. */
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Tag")
 	static bool AddOwnedGameplayTagsToActor(AActor* Actor, FGameplayTagContainer Tags, int32 Quantity = 1);
 
 	/** Removes owned gameplay tags from the actor. */
-	UFUNCTION(BlueprintCallable, Category = "Gameplay Action")
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Tag")
 	static bool RemoveOwnedGameplayTagsFromActor(AActor* Actor, FGameplayTagContainer Tags, int32 Quantity = 1);
+	
+	UFUNCTION(BlueprintCallable, Category = "Gameplay Tag")
+	static bool SendGameplayEventToActor(AActor* Actor, FGameplayTag EventTag);
 
 	/** Returns the float value of an attribute from the actor. */
 	UFUNCTION(BlueprintPure, Category = "Gameplay Attribute", meta = (AutoCreateRefTerm = "Attribute"))
 	static float GetAttributeValueFromActor(AActor* Actor, const FGameplayActionAttribute& Attribute);
 
-	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal (GameplayAttributeStruct)", CompactNodeTitle = "==", AutoCreateRefTerm = "Attribute1, Attribute2"), Category = "Gameplay Attribute | Utilities")
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "Equal (==) Gameplay Attribute Struct", CompactNodeTitle = "==", AutoCreateRefTerm = "Attribute1, Attribute2"), Category = "Gameplay Attribute | Utilities")
 	static bool EqualAttributeStruct(const FGameplayActionAttribute& Attribute1, const FGameplayActionAttribute& Attribute2);
 	
-	UFUNCTION(BlueprintPure, meta = (DisplayName = "Not Equal (GameplayAttributeStruct)", CompactNodeTitle = "!=", AutoCreateRefTerm = "Attribute1, Attribute2"), Category = "Gameplay Attribute | Utilities")
+	UFUNCTION(BlueprintPure, meta = (DisplayName = "Not Equal (!=) Gameplay Attribute Struct", CompactNodeTitle = "!=", AutoCreateRefTerm = "Attribute1, Attribute2"), Category = "Gameplay Attribute | Utilities")
 	static bool NotEqualAttributeStruct(const FGameplayActionAttribute& Attribute1, const FGameplayActionAttribute& Attribute2);
 
 	/** Creates a gameplay effect spec from an effect class. */
